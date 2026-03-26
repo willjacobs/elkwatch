@@ -1,0 +1,17 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      CONFIG_PATH: /app/config.yml
+      PORT: "3001"
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    expose:
+      - "3001"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

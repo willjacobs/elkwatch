@@ -1,0 +1,256 @@
+/* Nodes page — dashboard mockup layout */
+
+.nodes-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.nodes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nodes-toolbar-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.nodes-toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-lt);
+  text-transform: lowercase;
+}
+
+.nodes-health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nodes-health-dot.health-green {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.55);
+}
+
+.nodes-health-dot.health-yellow {
+  background: #facc15;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
+}
+
+.nodes-health-dot.health-red {
+  background: #f87171;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+}
+
+.nodes-summary-card {
+  background: rgba(26, 45, 90, 0.35);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem 1.5rem;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nodes-donuts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .nodes-donuts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.donut-column-title {
+  margin: 0 0 0.75rem;
+  font-family: "DM Mono", monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray-lt);
+  text-align: center;
+}
+
+.cluster-donut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cluster-donut-chart-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  height: 200px;
+  margin: 0 auto;
+}
+
+.cluster-donut-chart-wrap canvas {
+  max-height: 200px;
+}
+
+.cluster-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 8%;
+}
+
+.cluster-donut-center-main {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.2;
+}
+
+.cluster-donut-center-sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  color: var(--gray-lt);
+  margin-top: 0.1rem;
+}
+
+.cluster-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--gray-lt);
+  width: 100%;
+  max-width: 220px;
+}
+
+.cluster-donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cluster-donut-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.nodes-divider {
+  height: 1px;
+  background: var(--glass-border-subtle);
+  margin: 1.25rem 0 1.25rem;
+}
+
+.nodes-node-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.nodes-node-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.1fr) minmax(100px, 1fr) minmax(
+      100px,
+      0.9fr
+    )
+    minmax(90px, 0.8fr) minmax(90px, 0.8fr) minmax(140px, 1.2fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .nodes-node-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .nodes-node-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nodes-node-label {
+  font-family: "DM Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gray-lt);
+  margin-bottom: 0.35rem;
+}
+
+.nodes-node-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.nodes-node-sub {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gray-lt);
+  margin-top: 0.2rem;
+}
+
+.nodes-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 0.45rem;
+  overflow: hidden;
+}
+
+.nodes-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.nodes-meter-fill--disk {
+  background: #5b9fd4;
+}
+
+.nodes-meter-fill--disk-warn {
+  background: #facc15;
+}
+
+.nodes-meter-fill--disk-bad {
+  background: #f87171;
+}
+
+.nodes-meter-fill--heap {
+  background: #2dd4bf;
+}
+
+.nodes-meter-fill--heap-warn {
+  background: #facc15;
+}
+
+.nodes-meter-fill--heap-bad {
+  background: #f87171;
+}

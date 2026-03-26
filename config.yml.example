@@ -1,0 +1,31 @@
+# Copy to config.yml and mount into the backend container. Restart backend after edits.
+# Backend env: CONFIG_PATH (default /app/config.yml in Docker; see backend/src/config/loader.js for local dev), PORT (default 3001).
+
+clusters:
+  - name: production
+    url: https://your-es-host:9200
+    auth:
+      type: basic
+      username: elastic
+      password: changeme
+
+  - name: staging
+    url: http://staging-es:9200
+    auth:
+      type: none
+
+alerts:
+  slack_webhook_url: "https://hooks.slack.com/services/REPLACE_ME"
+  rules:
+    - name: "Ingestion stalled"
+      type: ingest_stall
+      index_pattern: "logs-*"
+      threshold_minutes: 60
+
+    - name: "Disk usage high"
+      type: disk_usage
+      threshold_percent: 80
+
+    - name: "ILM error"
+      type: ilm_error
+      enabled: true
