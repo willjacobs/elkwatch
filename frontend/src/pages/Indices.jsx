@@ -10,6 +10,7 @@ import {
   HEALTH_ORDER,
   parseStoreSizeToBytes,
 } from "../utils/tableSort.js";
+import { ACTIVE_CLUSTER_KEY, persistPageCluster } from "../utils/clusterStorage.js";
 
 export default function Indices() {
   const { data: clusters, loading: clustersLoading, error: clustersError } =
@@ -41,10 +42,17 @@ export default function Indices() {
     } catch {
       remembered = "";
     }
+    let active = "";
+    try {
+      active = window.localStorage.getItem(ACTIVE_CLUSTER_KEY) || "";
+    } catch {
+      active = "";
+    }
 
     const pick =
       (urlCluster && names.includes(urlCluster) && urlCluster) ||
       (remembered && names.includes(remembered) && remembered) ||
+      (active && names.includes(active) && active) ||
       names[0];
 
     if (!clusterName || clusterName !== pick) {
@@ -54,11 +62,7 @@ export default function Indices() {
 
   useEffect(() => {
     if (!clusterName) return;
-    try {
-      window.localStorage.setItem("elkwatch.cluster.indices", clusterName);
-    } catch {
-      // ignore
-    }
+    persistPageCluster("indices", clusterName);
   }, [clusterName]);
 
   const load = useCallback(async () => {

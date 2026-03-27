@@ -4,9 +4,10 @@ import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import { useClusters } from "../hooks/useCluster.js";
 import { formatBytes } from "../utils/format.js";
 import "./nodes.css";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useRegisterGlobalRefresh } from "../hooks/useGlobalRefresh.js";
 import { pushToast } from "../hooks/useToasts.js";
+import { ACTIVE_CLUSTER_KEY, persistPageCluster } from "../utils/clusterStorage.js";
 
 function parsePublishAddress(addr) {
   if (addr == null || addr === "") return { host: "—", port: "" };
@@ -39,6 +40,14 @@ function rolesLabel(roles) {
   return roles.join(", ");
 }
 
+function statusLabel(status) {
+  if (!status) return "unknown";
+  if (status === "green") return "healthy";
+  if (status === "yellow") return "degraded";
+  if (status === "red") return "error";
+  return String(status);
+}
+
 export default function Nodes() {
   const { data: clusters, loading: clustersLoading, error: clustersError } =
     useClusters();
@@ -64,10 +73,17 @@ export default function Nodes() {
     } catch {
       remembered = "";
     }
+    let active = "";
+    try {
+      active = window.localStorage.getItem(ACTIVE_CLUSTER_KEY) || "";
+    } catch {
+      active = "";
+    }
 
     const pick =
       (urlCluster && names.includes(urlCluster) && urlCluster) ||
       (remembered && names.includes(remembered) && remembered) ||
+      (active && names.includes(active) && active) ||
       names[0];
 
     if (!clusterName || clusterName !== pick) {
@@ -77,11 +93,7 @@ export default function Nodes() {
 
   useEffect(() => {
     if (!clusterName) return;
-    try {
-      window.localStorage.setItem("elkwatch.cluster.nodes", clusterName);
-    } catch {
-      // ignore
-    }
+    persistPageCluster("nodes", clusterName);
   }, [clusterName]);
 
   const load = useCallback(async () => {
@@ -138,6 +150,19 @@ export default function Nodes() {
     return list;
   }, [data, focus]);
 
+  const nodeRows = useMemo(() => {
+    const list = nodesList || [];
+    return list.map((n) => {
+      const addr = n.httpPublishAddress || n.host || n.ip || "";
+      const { host, port } = parsePublishAddress(addr);
+      return {
+        ...n,
+        hostLabel: host,
+        portLabel: port,
+      };
+    });
+  }, [nodesList]);
+
   if (clustersLoading && !clusters) {
     return <LoadingSpinner label="Loading clusters" />;
   }
@@ -151,6 +176,16 @@ export default function Nodes() {
       <header className="page-header">
         <h1 className="page-title">Nodes</h1>
       </header>
+
+      <div className="nodes-subtitle">
+        {clusterName ? (
+          <>
+            <span className="nodes-subtitle-main">{clusterName}</span>
+            <span className="nodes-subtitle-sep">·</span>
+            <span className="nodes-subtitle-muted">last updated just now</span>
+          </>
+        ) : null}
+      </div>
 
       <div className="toolbar nodes-toolbar">
         <div className="nodes-toolbar-left">
@@ -170,23 +205,20 @@ export default function Nodes() {
             </select>
           </div>
           <div className="toolbar-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => load()}
-            >
+            <button type="button" className="btn btn-primary" onClick={() => load()}>
               Refresh
             </button>
           </div>
         </div>
         {summary && (
           <div className="nodes-toolbar-status">
-            <span
-              className={`nodes-health-dot ${healthClass}`}
-              title={`Cluster status: ${summary.status}`}
-            />
-            <span>
-              {nodeCountLabel} · {summary.status}
+            <span className={`nodes-health-dot ${healthClass}`} />
+            <span className="nodes-toolbar-status-text">
+              Cluster status{" "}
+              <span className={`nodes-status-word ${healthClass}`}>
+                {summary.status}
+              </span>{" "}
+              <span className="nodes-status-sub">{statusLabel(summary.status)}</span>
             </span>
           </div>
         )}
@@ -196,120 +228,185 @@ export default function Nodes() {
       {error && <p className="error">{error}</p>}
 
       {data && !loading && !error && (
-        <section className="nodes-summary-card" aria-label="Cluster nodes summary">
-          <div className="nodes-donuts">
-            <div>
-              <h2 className="donut-column-title">Disk usage</h2>
-              <ClusterDonut
-                variant="disk"
-                summary={summary}
-                formatBytes={formatBytes}
-              />
+        <>
+          <section className="nodes-kpis" aria-label="Cluster summary">
+            <div className="nodes-kpi">
+              <div className="nodes-kpi-label">Nodes</div>
+              <div className="nodes-kpi-value">{summary?.numberOfNodes ?? "—"}</div>
+              <div className="nodes-kpi-sub"> {nodeCount === 1 ? "1 master" : ""}</div>
             </div>
-            <div>
-              <h2 className="donut-column-title">Heap memory</h2>
-              <ClusterDonut
-                variant="heap"
-                summary={summary}
-                formatBytes={formatBytes}
-              />
+            <div className="nodes-kpi">
+              <div className="nodes-kpi-label">Active shards</div>
+              <div className="nodes-kpi-value">{summary?.activeShards ?? "—"}</div>
+              <div className="nodes-kpi-sub">
+                of{" "}
+                {summary?.activeShards != null && summary?.unassignedShards != null
+                  ? summary.activeShards + summary.unassignedShards
+                  : "—"}{" "}
+                total
+              </div>
             </div>
-            <div>
-              <h2 className="donut-column-title">Shards</h2>
-              <ClusterDonut
-                variant="shards"
-                summary={summary}
-                formatBytes={formatBytes}
-              />
+            <div className="nodes-kpi nodes-kpi--warn">
+              <div className="nodes-kpi-label">Unassigned</div>
+              <div className="nodes-kpi-value">
+                {summary?.unassignedShards ?? "—"}
+              </div>
+              <div className="nodes-kpi-sub">replica shards</div>
             </div>
-          </div>
+            <div className="nodes-kpi">
+              <div className="nodes-kpi-label">Cluster status</div>
+              <div className={`nodes-kpi-value nodes-kpi-status ${healthClass}`}>
+                {summary?.status ?? "—"}
+              </div>
+              <div className="nodes-kpi-sub">{statusLabel(summary?.status)}</div>
+            </div>
+          </section>
 
-          <div className="nodes-divider" />
+          <section className="nodes-grid" aria-label="Cluster details">
+            <div className="card nodes-panel">
+              <div className="nodes-panel-header">
+                <div className="nodes-panel-title">Shard distribution</div>
+                <Link
+                  to={`/indices?cluster=${encodeURIComponent(clusterName)}`}
+                  className="nodes-panel-link"
+                >
+                  View indices
+                </Link>
+              </div>
+              <div className="nodes-shards-wrap">
+                <ClusterDonut
+                  variant="shards"
+                  summary={summary}
+                  formatBytes={formatBytes}
+                  compact
+                />
+              </div>
+            </div>
 
-          <div className="nodes-node-rows">
-            {nodesList.map((n) => {
-              const addr =
-                n.httpPublishAddress || n.host || n.ip || "";
-              const { host, port } = parsePublishAddress(addr);
-              const diskPct = n.diskUsedPercent;
-              const heapPct = n.heapUsedPercent;
-              return (
-                <div key={n.nodeId} className="nodes-node-row">
-                  <div>
-                    <div className="nodes-node-label">Node</div>
-                    <div className="nodes-node-value">{n.name}</div>
-                    <div className="nodes-node-sub">{rolesLabel(n.roles)}</div>
-                  </div>
-                  <div>
-                    <div className="nodes-node-label">Host</div>
-                    <div className="nodes-node-value">{host}</div>
-                    {port ? (
-                      <div className="nodes-node-sub">{port}</div>
-                    ) : null}
-                  </div>
-                  <div>
-                    <div className="nodes-node-label">Disk used</div>
-                    <div className="nodes-node-value">
-                      {diskPct != null ? `${diskPct}%` : "—"}
-                    </div>
-                    <div
-                      className="nodes-meter"
-                      title={
-                        diskPct != null
-                          ? `${diskPct}% of disk used on this node`
-                          : undefined
-                      }
-                    >
-                      <div
-                        className={diskBarClass(diskPct)}
-                        style={{
-                          width:
-                            diskPct != null
-                              ? `${Math.min(100, diskPct)}%`
-                              : "0%",
-                        }}
-                      />
+            <div className="card nodes-panel">
+              <div className="nodes-panel-header">
+                <div className="nodes-panel-title">Disk</div>
+              </div>
+              <div className="nodes-panel-body">
+                <div className="nodes-panel-donut">
+                  <ClusterDonut
+                    variant="disk"
+                    summary={summary}
+                    formatBytes={formatBytes}
+                    compact
+                  />
+                </div>
+                <div className="nodes-panel-metrics">
+                  <div className="nodes-mini-row">
+                    <div className="nodes-mini-swatch nodes-mini-swatch--disk" />
+                    <div className="nodes-mini-label">Used</div>
+                    <div className="nodes-mini-value">
+                      {formatBytes(summary?.diskUsedBytes)}
                     </div>
                   </div>
-                  <div>
-                    <div className="nodes-node-label">Total</div>
-                    <div className="nodes-node-value">
-                      {formatBytes(n.diskTotalBytes)}
+                  <div className="nodes-mini-row">
+                    <div className="nodes-mini-swatch nodes-mini-swatch--muted" />
+                    <div className="nodes-mini-label">Free</div>
+                    <div className="nodes-mini-value">
+                      {formatBytes(summary?.diskFreeBytes)}
                     </div>
-                    <div className="nodes-node-sub">disk</div>
                   </div>
-                  <div>
-                    <div className="nodes-node-label">Free</div>
-                    <div className="nodes-node-value">
-                      {formatBytes(n.diskFreeBytes)}
-                    </div>
-                    <div className="nodes-node-sub">disk</div>
-                  </div>
-                  <div>
-                    <div className="nodes-node-label">Heap</div>
-                    <div className="nodes-node-value">
-                      {n.jvmHeapUsedBytes != null &&
-                      n.jvmHeapMaxBytes != null
-                        ? `${formatBytes(n.jvmHeapUsedBytes)} / ${formatBytes(n.jvmHeapMaxBytes)}`
+                  <div className="nodes-mini-divider" />
+                  <div className="nodes-mini-row">
+                    <div className="nodes-mini-swatch nodes-mini-swatch--heap" />
+                    <div className="nodes-mini-label">Heap</div>
+                    <div className="nodes-mini-value">
+                      {summary?.heapUsedPercent != null
+                        ? `${summary.heapUsedPercent}%`
                         : "—"}
                     </div>
-                    <div className="nodes-meter">
-                      <div
-                        className={heapBarClass(heapPct)}
-                        style={{
-                          width:
-                            heapPct != null
-                              ? `${Math.min(100, heapPct)}%`
-                              : "0%",
-                        }}
-                      />
-                    </div>
+                  </div>
+                  <div className="nodes-mini-sub">
+                    {summary?.heapUsedBytes != null && summary?.heapMaxBytes != null
+                      ? `${formatBytes(summary.heapUsedBytes)} / ${formatBytes(summary.heapMaxBytes)}`
+                      : "—"}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </section>
+              </div>
+            </div>
+          </section>
+
+          <section className="card nodes-table" aria-label="Node list">
+            <div className="nodes-panel-header">
+              <div className="nodes-panel-title">Node list</div>
+              <div className="nodes-panel-muted">{nodeCountLabel}</div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Node</th>
+                    <th>Host</th>
+                    <th>Disk used</th>
+                    <th>Heap</th>
+                    <th>Roles</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nodeRows.map((n) => {
+                    const diskPct = n.diskUsedPercent;
+                    const heapPct = n.heapUsedPercent;
+                    return (
+                      <tr key={n.nodeId}>
+                        <td className="nodes-td-strong">{n.name}</td>
+                        <td className="nodes-td-mono">
+                          {n.hostLabel}
+                          {n.portLabel ? (
+                            <span className="nodes-td-muted">{n.portLabel}</span>
+                          ) : null}
+                        </td>
+                        <td>
+                          <div className="nodes-td-stack">
+                            <div className="nodes-td-accent">
+                              {diskPct != null ? `${diskPct}%` : "—"}
+                            </div>
+                            <div className="nodes-meter">
+                              <div
+                                className={diskBarClass(diskPct)}
+                                style={{
+                                  width:
+                                    diskPct != null
+                                      ? `${Math.min(100, diskPct)}%`
+                                      : "0%",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="nodes-td-stack">
+                            <div className="nodes-td-accent nodes-td-accent--heap">
+                              {heapPct != null ? `${heapPct}%` : "—"}
+                            </div>
+                            <div className="nodes-meter">
+                              <div
+                                className={heapBarClass(heapPct)}
+                                style={{
+                                  width:
+                                    heapPct != null
+                                      ? `${Math.min(100, heapPct)}%`
+                                      : "0%",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="nodes-td-muted" title={rolesLabel(n.roles)}>
+                          {rolesLabel(n.roles)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
       )}
     </div>
   );
