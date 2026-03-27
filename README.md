@@ -25,10 +25,12 @@ If you've ever had an ILM rollover fail silently, hit the `max_shards_per_node` 
 - **Nodes** — per-node disk and JVM heap from `_nodes/stats` (read-only)
 - **Index templates** — composable index templates (read-only viewer)
 - **Index browser** — sortable by size, doc count, age, health; supports wildcard filtering
-- **ILM monitor** — per-index phase/action/step visibility, failed step highlighting, policy breakdown
+- **ILM monitor + dry-run policy editor** — per-index phase/action/step visibility, failed step highlighting, and read-only policy diff validation
 - **Ingest rate tracking** — docs/sec over time per index; flags indices that have gone silent
 - **Configurable alerts** — disk threshold, ILM errors, ingest stalls; all delivered to Slack
 - **Multi-cluster support** — manage production, staging, and any other clusters from one dashboard
+- **Global refresh controls** — manual refresh + auto-refresh interval selector (with pause on hidden tabs)
+- **Theme support** — dark/light theme toggle in the top bar
 - **Prometheus `/metrics`** — process + `elkwatch_configured_clusters_total` (scrape via nginx or backend port)
 - **Zero dependencies at runtime** — just Docker
 
@@ -227,11 +229,39 @@ The output will print the public IP. Access Elkwatch at `http://<public-ip>:3000
 | `GET` | `/api/clusters` | Health summary for all clusters |
 | `GET` | `/api/indices/:cluster` | Index list with stats |
 | `GET` | `/api/ilm/:cluster` | ILM policies and per-index phase status |
+| `POST` | `/api/ilm/:cluster/dry-run` | Validate ILM policy JSON and return structural diff (no writes) |
 | `GET` | `/api/alerts` | Recent alert history (last 100) |
 | `GET` | `/api/nodes/:cluster` | Per-node filesystem and JVM heap stats |
 | `GET` | `/api/templates/:cluster` | Composable index templates (names, patterns, `composed_of`) |
 | `GET` | `/metrics` | Prometheus text exposition |
 | `GET` | `/health` | Backend liveness check |
+
+---
+
+## Versioning & Releases
+
+Elkwatch uses Semantic Versioning and git tags for releases.
+
+- Version format: `MAJOR.MINOR.PATCH` (e.g. `0.1.0`)
+- Release tags: `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`)
+- Changelog: see [`CHANGELOG.md`](CHANGELOG.md)
+
+### Release process
+
+1. Update versions and changelog entries.
+2. Commit release changes.
+3. Tag the release commit.
+4. Push commit + tag and create a GitHub Release from that tag.
+
+Example:
+
+```bash
+git add .
+git commit -m "release: v0.1.0"
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin main
+git push origin v0.1.0
+```
 
 ---
 
@@ -242,10 +272,10 @@ Done in-tree:
 - [x] Index template viewer (read-only)
 - [x] Per-node disk breakdown
 - [x] Prometheus metrics endpoint (`GET /metrics`)
+- [x] ILM policy editor (dry-run mode)
 
 Still open:
 
-- [ ] ILM policy editor (dry-run mode)
 - [ ] Persistent alert history (SQLite)
 - [ ] Auth / login wall for the dashboard itself
 

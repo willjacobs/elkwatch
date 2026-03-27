@@ -23,6 +23,32 @@ function extractPoliciesMap(policiesPayload) {
   return body;
 }
 
+function renderDiffPath(path) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  if (!parts.length) return <span>$</span>;
+  return (
+    <span className="diff-path-breadcrumb" title={path}>
+      {parts.map((part, idx) => (
+        <span
+          key={`${part}-${idx}`}
+          className={idx === parts.length - 1 ? "diff-path-leaf" : "diff-path-part"}
+        >
+          {idx > 0 ? <span className="diff-path-sep">›</span> : null}
+          <span>{part}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function diffGroupKey(path) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  if (!parts.length) return "$";
+  if (parts[0].startsWith("_")) return parts[0];
+  if (parts.length >= 2) return `${parts[0]}.${parts[1]}`;
+  return parts[0];
+}
+
 export default function ILM() {
   const { data: clusters, loading: clustersLoading, error: clustersError } =
     useClusters();
@@ -47,6 +73,9 @@ export default function ILM() {
   const [editorText, setEditorText] = useState("");
   const [dryRunLoading, setDryRunLoading] = useState(false);
   const [dryRunResult, setDryRunResult] = useState(null);
+  const [diffExpanded, setDiffExpanded] = useState(false);
+  const [includeMetaDiff, setIncludeMetaDiff] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
 
   useEffect(() => {
     if (!names.length) return;
@@ -218,6 +247,22 @@ export default function ILM() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [data]);
 
+  const visibleDiff = useMemo(() => {
+    const all = Array.isArray(dryRunResult?.diff) ? dryRunResult.diff : [];
+    const limit = Math.min(200, diffExpanded ? all.length : 50);
+    return all.slice(0, limit);
+  }, [dryRunResult, diffExpanded]);
+
+  const groupedDiff = useMemo(() => {
+    const map = new Map();
+    for (const item of visibleDiff) {
+      const key = diffGroupKey(item.path);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(item);
+    }
+    return Array.from(map.entries()).map(([key, items]) => ({ key, items }));
+  }, [visibleDiff]);
+
   if (clustersLoading && !clusters) {
     return <LoadingSpinner label="Loading clusters" />;
   }
@@ -230,6 +275,8 @@ export default function ILM() {
     if (!clusterName || !editorPolicyName) return;
     setDryRunLoading(true);
     setDryRunResult(null);
+    setDiffExpanded(false);
+    setCollapsedGroups({});
     try {
       const res = await fetch(
         `/api/ilm/${encodeURIComponent(clusterName)}/dry-run`,
@@ -239,6 +286,7 @@ export default function ILM() {
           body: JSON.stringify({
             policyName: editorPolicyName,
             proposedPolicyText: editorText,
+            includeMetaDiff,
           }),
         }
       );
@@ -326,6 +374,14 @@ export default function ILM() {
               </select>
             </div>
             <div className="toolbar-actions">
+              <label className="diff-toggle-inline">
+                <input
+                  type="checkbox"
+                  checked={includeMetaDiff}
+                  onChange={(e) => setIncludeMetaDiff(e.target.checked)}
+                />
+                Include _meta in diff
+              </label>
               <button
                 type="button"
                 className="btn"
@@ -390,39 +446,95 @@ export default function ILM() {
                 </div>
               </div>
 
+              {!includeMetaDiff ? (
+                <div className="muted" style={{ marginBottom: "0.5rem" }}>
+                  _meta changes are hidden by default.
+                </div>
+              ) : null}
+
               {Array.isArray(dryRunResult.diff) && dryRunResult.diff.length > 0 && (
                 <div className="card table-wrap" style={{ padding: "0.5rem" }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Path</th>
-                        <th>Before</th>
-                        <th>After</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dryRunResult.diff.slice(0, 50).map((d, idx) => (
-                        <tr key={`${d.path}-${idx}`}>
-                          <td style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }}>
-                            {d.path}
-                          </td>
-                          <td className="muted">
-                            {typeof d.before === "string"
-                              ? d.before
-                              : JSON.stringify(d.before)}
-                          </td>
-                          <td>
-                            {typeof d.after === "string"
-                              ? d.after
-                              : JSON.stringify(d.after)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="muted" style={{ marginTop: "0.5rem" }}>
-                    Showing first 50 diff entries.
+                  <div className="diff-header">
+                    <div className="muted">
+                      Showing {diffExpanded ? Math.min(200, dryRunResult.diff.length) : Math.min(50, dryRunResult.diff.length)} of{" "}
+                      {Math.min(200, dryRunResult.diff.length)} changes
+                    </div>
+                    {dryRunResult.diff.length > 50 ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary diff-toggle"
+                        onClick={() => setDiffExpanded((v) => !v)}
+                      >
+                        {diffExpanded ? "Show fewer" : "Show all"}
+                      </button>
+                    ) : null}
                   </div>
+                  <div className="diff-groups">
+                    {groupedDiff.map((g) => {
+                      const collapsed = collapsedGroups[g.key] === true;
+                      return (
+                        <section key={g.key} className="diff-group">
+                          <button
+                            type="button"
+                            className="diff-group-toggle"
+                            onClick={() =>
+                              setCollapsedGroups((prev) => ({
+                                ...prev,
+                                [g.key]: !prev[g.key],
+                              }))
+                            }
+                          >
+                            <span className="diff-group-title">{g.key}</span>
+                            <span className="diff-group-count">
+                              {g.items.length} change{g.items.length === 1 ? "" : "s"}
+                            </span>
+                            <span className="diff-group-chevron">{collapsed ? "▸" : "▾"}</span>
+                          </button>
+                          {!collapsed ? (
+                            <table className="diff-table">
+                              <thead>
+                                <tr>
+                                  <th>Path</th>
+                                  <th className="diff-col-before">Before</th>
+                                  <th className="diff-col-after">After</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {g.items.map((d, idx) => (
+                                  <tr key={`${g.key}-${d.path}-${idx}`}>
+                                    <td className="diff-path">
+                                      {renderDiffPath(d.path)}
+                                    </td>
+                                    <td className="diff-before">
+                                      <code className="diff-code">
+                                        <span className="diff-sign diff-sign--before">-</span>
+                                        {typeof d.before === "string"
+                                          ? d.before
+                                          : JSON.stringify(d.before)}
+                                      </code>
+                                    </td>
+                                    <td className="diff-after">
+                                      <code className="diff-code">
+                                        <span className="diff-sign diff-sign--after">+</span>
+                                        {typeof d.after === "string"
+                                          ? d.after
+                                          : JSON.stringify(d.after)}
+                                      </code>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : null}
+                        </section>
+                      );
+                    })}
+                  </div>
+                  {dryRunResult.diff.length > 200 ? (
+                    <div className="muted" style={{ marginTop: "0.5rem" }}>
+                      Showing up to 200 diff entries.
+                    </div>
+                  ) : null}
                 </div>
               )}
 

@@ -19,6 +19,8 @@ import {
 } from "./components/SidebarIcons.jsx";
 import { syncAllClusterKeys } from "./utils/clusterStorage.js";
 
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.1.0";
+
 function clusterStatusDotClass(status) {
   if (status === "green") return "app-sidebar-cluster-dot--green";
   if (status === "yellow") return "app-sidebar-cluster-dot--yellow";
@@ -188,7 +190,10 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app-layout">
+    <div
+      className="app-layout"
+      style={{ "--sidebar-current-width": `${effectiveSidebarWidth}px` }}
+    >
       <aside
         className={`app-sidebar${sidebarCollapsed ? " app-sidebar--collapsed" : ""}`}
         style={{ width: effectiveSidebarWidth, maxWidth: effectiveSidebarWidth }}
@@ -270,40 +275,6 @@ export default function App() {
             <span>Templates</span>
           </NavLink>
         </nav>
-        {!sidebarCollapsed && clusterNames.length > 0 && (
-          <div className="app-sidebar-footer">
-            <label
-              className="app-sidebar-footer-label"
-              htmlFor="sidebar-active-cluster"
-            >
-              Active cluster
-            </label>
-            <div className="app-sidebar-cluster-row">
-              <span
-                className={`app-sidebar-cluster-dot ${clusterStatusDotClass(
-                  clusterRow?.status
-                )}`}
-                title={
-                  clusterRow?.status
-                    ? `Cluster status: ${clusterRow.status}`
-                    : undefined
-                }
-              />
-              <select
-                id="sidebar-active-cluster"
-                className="select-elk app-sidebar-cluster-select"
-                value={sidebarCluster}
-                onChange={onSidebarClusterChange}
-              >
-                {clusterNames.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
         <div
           className={`sidebar-resizer${sidebarCollapsed ? " sidebar-resizer--disabled" : ""}`}
           onMouseDown={onStartResize}
@@ -312,49 +283,85 @@ export default function App() {
           aria-label="Resize sidebar"
         />
       </aside>
+      {!sidebarCollapsed && clusterNames.length > 0 && (
+        <div className="app-sidebar-footer">
+          <label
+            className="app-sidebar-footer-label"
+            htmlFor="sidebar-active-cluster"
+          >
+            Active cluster
+          </label>
+          <div className="app-sidebar-cluster-row">
+            <span
+              className={`app-sidebar-cluster-dot ${clusterStatusDotClass(
+                clusterRow?.status
+              )}`}
+              title={
+                clusterRow?.status
+                  ? `Cluster status: ${clusterRow.status}`
+                  : undefined
+              }
+            />
+            <select
+              id="sidebar-active-cluster"
+              className="select-elk app-sidebar-cluster-select"
+              value={sidebarCluster}
+              onChange={onSidebarClusterChange}
+            >
+              {clusterNames.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="app-sidebar-footer-controls">
+            <div className="cluster-select app-sidebar-control">
+              <label htmlFor="refresh-interval-footer">Auto-refresh</label>
+              <select
+                id="refresh-interval-footer"
+                className="select-elk app-sidebar-cluster-select"
+                value={refreshIntervalMs}
+                onChange={(e) => setRefreshIntervalMs(parseInt(e.target.value, 10))}
+                title={`Auto-refresh: ${intervalLabel}`}
+              >
+                <option value={0}>Off</option>
+                <option value={30000}>30s</option>
+                <option value={60000}>1m</option>
+                <option value={300000}>5m</option>
+              </select>
+            </div>
+            <div className="cluster-select app-sidebar-control">
+              <label htmlFor="theme-select-footer">Theme</label>
+              <select
+                id="theme-select-footer"
+                className="select-elk app-sidebar-cluster-select"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+              >
+                <option value="dark">Dark</option>
+                <option value="charcoal">Charcoal</option>
+                <option value="light">Light</option>
+              </select>
+            </div>
+          </div>
+          <div className="app-sidebar-version" title="Application version">
+            v{APP_VERSION}
+          </div>
+        </div>
+      )}
       <main className="app-main">
         <Toasts />
         <div className="app-topbar">
-          <div className="app-topbar-left">
-            <button
-              type="button"
-              className="btn btn-secondary app-refresh-btn"
-              onClick={() => refreshNow()}
-              title="Refresh current page"
-            >
-              Refresh
-            </button>
-          </div>
-          <div className="app-topbar-right">
-            <label className="app-topbar-label" htmlFor="refresh-interval">
-              Auto-refresh
-            </label>
-            <select
-              id="refresh-interval"
-              className="select-elk app-theme-select"
-              value={refreshIntervalMs}
-              onChange={(e) => setRefreshIntervalMs(parseInt(e.target.value, 10))}
-              title={`Auto-refresh: ${intervalLabel}`}
-            >
-              <option value={0}>Off</option>
-              <option value={30000}>30s</option>
-              <option value={60000}>1m</option>
-              <option value={300000}>5m</option>
-            </select>
-            <label className="app-topbar-label" htmlFor="theme-select">
-              Theme
-            </label>
-            <select
-              id="theme-select"
-              className="select-elk app-theme-select"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-            >
-              <option value="dark">Dark</option>
-              <option value="charcoal">Charcoal</option>
-              <option value="light">Light</option>
-            </select>
-          </div>
+          <button
+            type="button"
+            className="btn btn-secondary app-refresh-icon-btn"
+            onClick={() => refreshNow()}
+            title="Refresh current page"
+            aria-label="Refresh current page"
+          >
+            ↻
+          </button>
         </div>
         <Routes>
           <Route path="/" element={<Overview />} />
