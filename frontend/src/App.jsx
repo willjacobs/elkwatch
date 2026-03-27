@@ -1,5 +1,5 @@
 import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Overview from "./pages/Overview.jsx";
 import Indices from "./pages/Indices.jsx";
 import ILM from "./pages/ILM.jsx";
@@ -33,6 +33,10 @@ export default function App() {
   const { data: clusters } = useClusters();
   const location = useLocation();
   const navigate = useNavigate();
+  const dragRef = useRef({ active: false, startX: 0, startW: 0 });
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(220);
 
   const clusterNames = useMemo(
     () => (clusters || []).map((c) => c.name),
@@ -78,6 +82,26 @@ export default function App() {
       // ignore
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const c = window.localStorage.getItem("elkwatch.sidebar.collapsed");
+      if (c === "1") setSidebarCollapsed(true);
+      const w = parseInt(window.localStorage.getItem("elkwatch.sidebar.width") || "", 10);
+      if (Number.isFinite(w) && w >= 180 && w <= 360) setSidebarWidth(w);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("elkwatch.sidebar.collapsed", sidebarCollapsed ? "1" : "0");
+      window.localStorage.setItem("elkwatch.sidebar.width", String(sidebarWidth));
+    } catch {
+      // ignore
+    }
+  }, [sidebarCollapsed, sidebarWidth]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -136,15 +160,53 @@ export default function App() {
     return `${path}?cluster=${encodeURIComponent(sidebarCluster)}`;
   };
 
+  const effectiveSidebarWidth = sidebarCollapsed ? 72 : sidebarWidth;
+
+  const onStartResize = (e) => {
+    if (sidebarCollapsed) return;
+    dragRef.current = { active: true, startX: e.clientX, startW: sidebarWidth };
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragRef.current.active) return;
+      const dx = e.clientX - dragRef.current.startX;
+      const next = Math.max(180, Math.min(360, dragRef.current.startW + dx));
+      setSidebarWidth(next);
+    };
+    const onUp = () => {
+      if (!dragRef.current.active) return;
+      dragRef.current.active = false;
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
   return (
     <div className="app-layout">
-      <aside className="app-sidebar">
+      <aside
+        className={`app-sidebar${sidebarCollapsed ? " app-sidebar--collapsed" : ""}`}
+        style={{ width: effectiveSidebarWidth, maxWidth: effectiveSidebarWidth }}
+      >
         <div className="sidebar-brand">
           <span className="sidebar-brand-text">
             <span className="sidebar-brand-accent">Elk</span>watch
           </span>
+          <button
+            type="button"
+            className="sidebar-collapse-btn"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? "›" : "‹"}
+          </button>
         </div>
-        <div className="sidebar-section-label">Monitor</div>
         <nav className="app-sidebar-nav">
           <NavLink
             end
@@ -152,6 +214,7 @@ export default function App() {
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
+            title={sidebarCollapsed ? "Overview" : undefined}
           >
             <IconOverview />
             <span>Overview</span>
@@ -161,6 +224,7 @@ export default function App() {
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
+            title={sidebarCollapsed ? "Indices" : undefined}
           >
             <IconIndices />
             <span>Indices</span>
@@ -170,6 +234,7 @@ export default function App() {
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
+            title={sidebarCollapsed ? "ILM" : undefined}
           >
             <IconILM />
             <span>ILM</span>
@@ -179,6 +244,7 @@ export default function App() {
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
+            title={sidebarCollapsed ? "Alerts" : undefined}
           >
             <IconAlerts />
             <span>Alerts</span>
@@ -188,6 +254,7 @@ export default function App() {
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
+            title={sidebarCollapsed ? "Nodes" : undefined}
           >
             <IconNodes />
             <span>Nodes</span>
@@ -197,12 +264,13 @@ export default function App() {
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
+            title={sidebarCollapsed ? "Templates" : undefined}
           >
             <IconTemplates />
             <span>Templates</span>
           </NavLink>
         </nav>
-        {clusterNames.length > 0 && (
+        {!sidebarCollapsed && clusterNames.length > 0 && (
           <div className="app-sidebar-footer">
             <label
               className="app-sidebar-footer-label"
@@ -236,6 +304,13 @@ export default function App() {
             </div>
           </div>
         )}
+        <div
+          className={`sidebar-resizer${sidebarCollapsed ? " sidebar-resizer--disabled" : ""}`}
+          onMouseDown={onStartResize}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+        />
       </aside>
       <main className="app-main">
         <Toasts />
