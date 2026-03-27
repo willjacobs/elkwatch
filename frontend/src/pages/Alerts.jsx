@@ -6,6 +6,10 @@ import { useClusters } from "../hooks/useCluster.js";
 import { useSearchParams, Link } from "react-router-dom";
 import { useRegisterGlobalRefresh } from "../hooks/useGlobalRefresh.js";
 import { pushToast } from "../hooks/useToasts.js";
+import {
+  ACTIVE_CLUSTER_KEY,
+  persistPageCluster,
+} from "../utils/clusterStorage.js";
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 
@@ -35,10 +39,17 @@ export default function Alerts() {
     } catch {
       remembered = "";
     }
+    let active = "";
+    try {
+      active = window.localStorage.getItem(ACTIVE_CLUSTER_KEY) || "";
+    } catch {
+      active = "";
+    }
 
     const pick =
       (urlCluster && clusterNames.includes(urlCluster) && urlCluster) ||
       (remembered && clusterNames.includes(remembered) && remembered) ||
+      (active && clusterNames.includes(active) && active) ||
       "";
 
     if (clusterFilter !== pick) {
@@ -47,11 +58,7 @@ export default function Alerts() {
   }, [clusterNames, urlCluster, clusterFilter]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem("elkwatch.cluster.alerts", clusterFilter);
-    } catch {
-      // ignore
-    }
+    persistPageCluster("alerts", clusterFilter);
   }, [clusterFilter]);
 
   const load = useCallback(async () => {

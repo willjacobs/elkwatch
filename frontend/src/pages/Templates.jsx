@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import { useClusters } from "../hooks/useCluster.js";
+import { useSearchParams } from "react-router-dom";
 import { useRegisterGlobalRefresh } from "../hooks/useGlobalRefresh.js";
 import { pushToast } from "../hooks/useToasts.js";
+import { ACTIVE_CLUSTER_KEY, persistPageCluster } from "../utils/clusterStorage.js";
 
 export default function Templates() {
   const { data: clusters, loading: clustersLoading, error: clustersError } =
@@ -15,12 +17,41 @@ export default function Templates() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const urlCluster = searchParams.get("cluster");
 
   useEffect(() => {
-    if (names.length && !clusterName) {
-      setClusterName(names[0]);
+    if (!names.length) return;
+
+    const key = "elkwatch.cluster.templates";
+    let remembered = "";
+    try {
+      remembered = window.localStorage.getItem(key) || "";
+    } catch {
+      remembered = "";
     }
-  }, [names, clusterName]);
+    let active = "";
+    try {
+      active = window.localStorage.getItem(ACTIVE_CLUSTER_KEY) || "";
+    } catch {
+      active = "";
+    }
+
+    const pick =
+      (urlCluster && names.includes(urlCluster) && urlCluster) ||
+      (remembered && names.includes(remembered) && remembered) ||
+      (active && names.includes(active) && active) ||
+      names[0];
+
+    if (!clusterName || clusterName !== pick) {
+      setClusterName(pick);
+    }
+  }, [names, clusterName, urlCluster]);
+
+  useEffect(() => {
+    if (!clusterName) return;
+    persistPageCluster("templates", clusterName);
+  }, [clusterName]);
 
   const load = useCallback(async () => {
     if (!clusterName) return;

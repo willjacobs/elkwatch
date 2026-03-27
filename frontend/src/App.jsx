@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import Overview from "./pages/Overview.jsx";
 import Indices from "./pages/Indices.jsx";
@@ -7,17 +7,73 @@ import Alerts from "./pages/Alerts.jsx";
 import Nodes from "./pages/Nodes.jsx";
 import Templates from "./pages/Templates.jsx";
 import { useGlobalRefreshController } from "./hooks/useGlobalRefresh.js";
+import { useClusters } from "./hooks/useCluster.js";
 import Toasts from "./components/Toasts.jsx";
+import {
+  IconAlerts,
+  IconILM,
+  IconIndices,
+  IconNodes,
+  IconOverview,
+  IconTemplates,
+} from "./components/SidebarIcons.jsx";
+import { syncAllClusterKeys } from "./utils/clusterStorage.js";
+
+function clusterStatusDotClass(status) {
+  if (status === "green") return "app-sidebar-cluster-dot--green";
+  if (status === "yellow") return "app-sidebar-cluster-dot--yellow";
+  if (status === "red") return "app-sidebar-cluster-dot--red";
+  return "app-sidebar-cluster-dot--unknown";
+}
 
 export default function App() {
   const [theme, setTheme] = useState("dark");
   const { refreshNow, refreshAuto } = useGlobalRefreshController();
   const [refreshIntervalMs, setRefreshIntervalMs] = useState(0);
+  const { data: clusters } = useClusters();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const clusterNames = useMemo(
+    () => (clusters || []).map((c) => c.name),
+    [clusters]
+  );
+
+  const sidebarCluster = useMemo(() => {
+    if (!clusterNames.length) return "";
+    const q = new URLSearchParams(location.search).get("cluster");
+    if (q && clusterNames.includes(q)) return q;
+    try {
+      const a = window.localStorage.getItem("elkwatch.cluster.active");
+      if (a && clusterNames.includes(a)) return a;
+    } catch {
+      // ignore
+    }
+    return clusterNames[0];
+  }, [clusterNames, location.search]);
+
+  const clusterRow = useMemo(
+    () => (clusters || []).find((c) => c.name === sidebarCluster),
+    [clusters, sidebarCluster]
+  );
+
+  const onSidebarClusterChange = (e) => {
+    const name = e.target.value;
+    syncAllClusterKeys(name);
+    const sp = new URLSearchParams(location.search);
+    sp.set("cluster", name);
+    navigate(
+      { pathname: location.pathname, search: `?${sp.toString()}` },
+      { replace: true }
+    );
+  };
 
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem("elkwatch.theme");
-      if (saved === "light" || saved === "dark") setTheme(saved);
+      if (saved === "light" || saved === "dark" || saved === "charcoal") {
+        setTheme(saved);
+      }
     } catch {
       // ignore
     }
@@ -75,12 +131,20 @@ export default function App() {
     return "Off";
   }, [refreshIntervalMs]);
 
+  const toWithCluster = (path) => {
+    if (!sidebarCluster) return path;
+    return `${path}?cluster=${encodeURIComponent(sidebarCluster)}`;
+  };
+
   return (
     <div className="app-layout">
       <aside className="app-sidebar">
         <div className="sidebar-brand">
-          <span className="sidebar-brand-accent">Elk</span>watch
+          <span className="sidebar-brand-text">
+            <span className="sidebar-brand-accent">Elk</span>watch
+          </span>
         </div>
+        <div className="sidebar-section-label">Monitor</div>
         <nav className="app-sidebar-nav">
           <NavLink
             end
@@ -89,49 +153,89 @@ export default function App() {
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
           >
-            Overview
+            <IconOverview />
+            <span>Overview</span>
           </NavLink>
           <NavLink
-            to="/indices"
+            to={toWithCluster("/indices")}
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
           >
-            Indices
+            <IconIndices />
+            <span>Indices</span>
           </NavLink>
           <NavLink
-            to="/ilm"
+            to={toWithCluster("/ilm")}
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
           >
-            ILM
+            <IconILM />
+            <span>ILM</span>
           </NavLink>
           <NavLink
-            to="/alerts"
+            to={toWithCluster("/alerts")}
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
           >
-            Alerts
+            <IconAlerts />
+            <span>Alerts</span>
           </NavLink>
           <NavLink
-            to="/nodes"
+            to={toWithCluster("/nodes")}
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
           >
-            Nodes
+            <IconNodes />
+            <span>Nodes</span>
           </NavLink>
           <NavLink
-            to="/templates"
+            to={toWithCluster("/templates")}
             className={({ isActive }) =>
               `app-sidebar-item${isActive ? " app-sidebar-item--active" : ""}`
             }
           >
-            Templates
+            <IconTemplates />
+            <span>Templates</span>
           </NavLink>
         </nav>
+        {clusterNames.length > 0 && (
+          <div className="app-sidebar-footer">
+            <label
+              className="app-sidebar-footer-label"
+              htmlFor="sidebar-active-cluster"
+            >
+              Active cluster
+            </label>
+            <div className="app-sidebar-cluster-row">
+              <span
+                className={`app-sidebar-cluster-dot ${clusterStatusDotClass(
+                  clusterRow?.status
+                )}`}
+                title={
+                  clusterRow?.status
+                    ? `Cluster status: ${clusterRow.status}`
+                    : undefined
+                }
+              />
+              <select
+                id="sidebar-active-cluster"
+                className="select-elk app-sidebar-cluster-select"
+                value={sidebarCluster}
+                onChange={onSidebarClusterChange}
+              >
+                {clusterNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </aside>
       <main className="app-main">
         <Toasts />
@@ -172,6 +276,7 @@ export default function App() {
               onChange={(e) => setTheme(e.target.value)}
             >
               <option value="dark">Dark</option>
+              <option value="charcoal">Charcoal</option>
               <option value="light">Light</option>
             </select>
           </div>

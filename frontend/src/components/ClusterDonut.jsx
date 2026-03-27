@@ -28,7 +28,7 @@ function shardColors(unassigned) {
 /**
  * Doughnut with HTML center label (not drawn on canvas). cutout 72% per mockup.
  */
-export default function ClusterDonut({ variant, summary, formatBytes }) {
+export default function ClusterDonut({ variant, summary, formatBytes, compact }) {
   const fmt = formatBytes || ((n) => String(n));
 
   const { data, options, centerMain, centerSub, legendItems } = useMemo(() => {
@@ -150,7 +150,7 @@ export default function ClusterDonut({ variant, summary, formatBytes }) {
   }, [variant, summary, formatBytes]);
 
   return (
-    <div className="cluster-donut">
+    <div className={`cluster-donut${compact ? " cluster-donut--compact" : ""}`}>
       <div className="cluster-donut-chart-wrap">
         <Doughnut data={data} options={options} />
         <div className="cluster-donut-center" aria-hidden>

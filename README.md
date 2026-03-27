@@ -156,6 +156,51 @@ npm run dev                               # starts on :5173 with HMR
 
 The Vite dev server proxies `/api` to `localhost:3001` automatically.
 
+### Local dev ELK environment (Elasticsearch + Kibana + Logstash)
+
+For local development (especially for ILM/indices/nodes screens), you can spin up a single-node Elasticsearch plus Kibana and Logstash:
+
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+This starts:
+
+- **Elasticsearch**: `http://localhost:9200`
+- **Kibana**: `http://localhost:5601`
+- **Logstash**: Beats input on `:5044`, monitoring API on `:9600`
+
+Notes:
+
+- Security is disabled in this dev stack (`xpack.security.enabled=false`), so set your cluster auth to `none`.
+- Data is persisted in a Docker volume named `esdata`. To wipe the dev cluster completely:
+
+```bash
+docker-compose -f docker-compose.dev.yml down -v
+```
+
+#### Point Elkwatch at the dev cluster
+
+If you run the **backend on your host** (`npm run dev`), use:
+
+```yaml
+clusters:
+  - name: dev
+    url: http://localhost:9200
+    auth:
+      type: none
+```
+
+If you run the **Elkwatch backend container** via `docker-compose up`, use the container DNS name:
+
+```yaml
+clusters:
+  - name: dev
+    url: http://elasticsearch:9200
+    auth:
+      type: none
+```
+
 ---
 
 ## Deployment on AWS (Terraform)
