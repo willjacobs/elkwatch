@@ -230,6 +230,7 @@ a:hover {
   min-height: 100vh;
   overflow-x: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 
 .sidebar-brand {
@@ -244,6 +245,8 @@ a:hover {
   color: var(--white);
   border-bottom: 1px solid var(--glass-border-subtle);
   margin-bottom: 8px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .sidebar-brand-text {
@@ -254,13 +257,34 @@ a:hover {
   color: var(--orange);
 }
 
-.sidebar-section-label {
-  padding: 8px 20px 6px;
-  font-family: "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+.sidebar-collapse-btn {
+  border: 1px solid var(--glass-border-subtle);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--gray-lt);
+  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+  color: var(--white);
+  border-color: rgba(242, 100, 25, 0.35);
+}
+
+.app-sidebar--collapsed .sidebar-brand {
+  padding-left: 14px;
+  padding-right: 10px;
+}
+
+.app-sidebar--collapsed .sidebar-brand-text {
+  display: none;
 }
 
 .app-sidebar-nav {
@@ -270,6 +294,11 @@ a:hover {
   padding: 4px 14px 0 20px;
   gap: 0;
   min-height: 0;
+}
+
+.app-sidebar--collapsed .app-sidebar-nav {
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .app-sidebar-item {
@@ -289,6 +318,16 @@ a:hover {
   border-radius: 0;
   border-left: 2px solid transparent;
   transition: color 0.2s, background 0.2s;
+}
+
+.app-sidebar--collapsed .app-sidebar-item {
+  justify-content: center;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.app-sidebar--collapsed .app-sidebar-item span {
+  display: none;
 }
 
 .app-sidebar-item:hover {
@@ -344,6 +383,38 @@ a:hover {
   flex: 1;
   font-size: 0.78rem;
   box-sizing: border-box;
+}
+
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-resizer:hover::after {
+  background: rgba(242, 100, 25, 0.22);
+}
+
+.sidebar-resizer--disabled {
+  cursor: default;
+}
+
+.sidebar-resizer--disabled::after {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .app-sidebar-cluster-dot {
