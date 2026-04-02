@@ -11,7 +11,7 @@ Full visual redesign of the Elkwatch frontend. All existing functionality is pre
 
 **Design direction:** Modern Enterprise (Datadog-inspired)  
 **Palette:** Electric blue accent (#3b82f6), neon green health (#4ade80), deep charcoal background (#0d0f14)  
-**New dependency:** Recharts (for gauges, donuts, sparklines on the Nodes page)  
+**New dependency:** None — existing Chart.js (react-chartjs-2) was used for gauges, donuts, and sparklines on the Nodes page  
 **Theme support:** Dark (default), Light, Charcoal — toggled via `documentElement.dataset.theme`, preserved in localStorage
 
 ---
@@ -98,9 +98,9 @@ The most visually rich page. Three sections:
 Four cards in a row: Nodes, Active Shards, Unassigned (green when 0, yellow/red otherwise), Cluster Status.
 
 ### 2. Visualization panels (3 columns)
-- **Disk gauge** — Recharts `RadialBarChart` or SVG radial gauge. Shows used% as arc, center label shows percentage and used/total bytes. Legend below: Used / Free.
-- **Shard donut** — Recharts `PieChart`. Segments: Primary (blue), Replica (indigo), Unassigned (red), Relocating (yellow). Center label: total shard count.
-- **Heap sparklines** — One `LineChart` per node using Recharts `ResponsiveContainer`. Shows heap% over the last N data points (using in-memory rolling window of the last 20 poll results). Gradient fill under the line. Color: purple normally, yellow ≥80%, red ≥90%.
+- **Disk gauge** — Chart.js (react-chartjs-2) Doughnut or SVG radial gauge. Shows used% as arc, center label shows percentage and used/total bytes. Legend below: Used / Free.
+- **Shard donut** — Chart.js (react-chartjs-2) Doughnut. Segments: Primary (blue), Replica (indigo), Unassigned (red), Relocating (yellow). Center label: total shard count.
+- **Heap sparklines** — One Line chart per node using Chart.js (react-chartjs-2). Shows heap% over the last N data points (using in-memory rolling window of the last 20 poll results). Gradient fill under the line. Color: purple normally, yellow ≥80%, red ≥90%.
 
 > **Note on sparkline data:** The backend currently returns only the current snapshot. The frontend will maintain a rolling in-memory array (up to 20 entries) per cluster+node key, appended on each refresh. No backend changes needed.
 
@@ -138,7 +138,7 @@ Table footer with "Showing X–Y of Z" count and prev/next page buttons. Existin
 
 | Component | Change |
 |-----------|--------|
-| `ClusterDonut.jsx` | Replace with Recharts `PieChart` — same props interface |
+| `ClusterDonut.jsx` | Replace with Chart.js (react-chartjs-2) Doughnut — same props interface |
 | `LoadingSpinner.jsx` | Restyle with new palette; keep existing API |
 | `SortableTh.jsx` | Update sort indicator styling |
 | `Toasts.jsx` | Restyle: slide in from top-right, new color tokens |
@@ -147,7 +147,7 @@ Table footer with "Showing X–Y of Z" count and prev/next page buttons. Existin
 | New: `KpiCard.jsx` | Reusable stat card |
 | New: `MeterBar.jsx` | Inline utilization bar with threshold colors |
 | New: `HealthBadge.jsx` | Color-coded health/status pill |
-| New: `SparklineChart.jsx` | Thin Recharts wrapper for per-node heap sparklines |
+| New: `SparklineChart.jsx` | Thin Chart.js (react-chartjs-2) wrapper for per-node heap sparklines |
 
 ---
 
@@ -156,7 +156,7 @@ Table footer with "Showing X–Y of Z" count and prev/next page buttons. Existin
 - No new data fetched from the backend
 - No new pages or routes
 - No changes to alert rules, ILM logic, or any backend service
-- No animation library (CSS transitions only, except Recharts built-ins)
+- No animation library (CSS transitions only, except Chart.js built-ins)
 - Charcoal theme light-mode equivalent: keep existing charcoal theme values, update only the dark and light themes with the new palette
 
 ---
@@ -171,4 +171,4 @@ Table footer with "Showing X–Y of Z" count and prev/next page buttons. Existin
 - `frontend/src/pages/nodes.css` — absorbed into component styles or index.css
 
 **Dependencies:**
-- Add `recharts` to `frontend/package.json`
+- No new dependencies — Chart.js (react-chartjs-2) was already installed
