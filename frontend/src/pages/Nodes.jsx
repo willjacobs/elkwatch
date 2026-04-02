@@ -3,7 +3,6 @@ import ClusterDonut from "../components/ClusterDonut.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import { useClusters } from "../hooks/useCluster.js";
 import { formatBytes } from "../utils/format.js";
-import "./nodes.css";
 import { Link, useSearchParams } from "react-router-dom";
 import { useRegisterGlobalRefresh } from "../hooks/useGlobalRefresh.js";
 import { pushToast } from "../hooks/useToasts.js";
