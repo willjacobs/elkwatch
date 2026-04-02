@@ -91,42 +91,39 @@ export default function Templates() {
     return <p className="error">{clustersError}</p>;
   }
 
+  const templateCount = data?.templates?.length ?? 0;
+
   return (
     <div>
-      <header className="page-header">
+      <div className="page-toolbar">
         <h1 className="page-title">Index templates</h1>
-      </header>
+        {data?.templates && (
+          <span className="stat-chip">{templateCount} template{templateCount !== 1 ? "s" : ""}</span>
+        )}
+        <span className="toolbar-spacer" />
+        <select
+          className="filter-select"
+          value={clusterName}
+          onChange={(e) => setClusterName(e.target.value)}
+        >
+          {names.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <button type="button" className="btn btn-primary" onClick={() => load()}>
+          Refresh
+        </button>
+      </div>
+
       <p className="muted" style={{ marginBottom: "1rem" }}>
         Composable index templates (Elasticsearch 7.8+). Read-only view.
       </p>
-      <div className="toolbar">
-        <div className="cluster-select">
-          <label htmlFor="tpl-cluster">Cluster</label>
-          <select
-            id="tpl-cluster"
-            className="select-elk"
-            value={clusterName}
-            onChange={(e) => setClusterName(e.target.value)}
-          >
-            {names.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="toolbar-actions">
-          <button type="button" className="btn btn-primary" onClick={() => load()}>
-            Refresh
-          </button>
-        </div>
-      </div>
 
       {loading && <LoadingSpinner compact label="Loading templates" />}
       {error && <p className="error">{error}</p>}
 
       {data?.templates && !loading && (
-        <div className="card table-wrap">
+        <div className="table-wrap">
           <table>
             <thead>
               <tr>
@@ -146,9 +143,15 @@ export default function Templates() {
               ) : (
                 data.templates.map((t) => (
                   <tr key={t.name}>
-                    <td>{t.name}</td>
-                    <td>{(t.indexPatterns || []).join(", ") || "—"}</td>
-                    <td>{t.priority}</td>
+                    <td className="text-mono">{t.name}</td>
+                    <td>
+                      {(t.indexPatterns || []).length > 0
+                        ? t.indexPatterns.map((p) => (
+                            <span key={p} style={{ display: "inline-block", margin: "1px 3px 1px 0", padding: "1px 6px", background: "var(--clr-surface-hi)", border: "1px solid var(--clr-border)", borderRadius: "4px", fontSize: "11px", fontFamily: "monospace" }}>{p}</span>
+                          ))
+                        : "—"}
+                    </td>
+                    <td className="tabular-num">{t.priority}</td>
                     <td className="muted">
                       {(t.composedOf || []).join(", ") || "—"}
                     </td>
@@ -157,6 +160,9 @@ export default function Templates() {
               )}
             </tbody>
           </table>
+          <div className="table-footer">
+            {templateCount} template{templateCount !== 1 ? "s" : ""}
+          </div>
         </div>
       )}
     </div>
