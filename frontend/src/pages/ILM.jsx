@@ -263,6 +263,13 @@ export default function ILM() {
     return Array.from(map.entries()).map(([key, items]) => ({ key, items }));
   }, [visibleDiff]);
 
+  const errorCount = useMemo(() => {
+    const rows = data?.indices || [];
+    return rows.filter((r) => r.failedStep || r.error).length;
+  }, [data]);
+
+  const phaseColors = { hot: "var(--clr-red)", warm: "var(--clr-yellow)", cold: "var(--clr-accent)", frozen: "var(--clr-purple)", delete: "var(--clr-dim)" };
+
   if (clustersLoading && !clusters) {
     return <LoadingSpinner label="Loading clusters" />;
   }
@@ -315,13 +322,6 @@ export default function ILM() {
       setDryRunLoading(false);
     }
   };
-
-  const phaseColors = { hot: "var(--clr-red)", warm: "var(--clr-yellow)", cold: "var(--clr-accent)", frozen: "var(--clr-purple)", delete: "var(--clr-dim)" };
-
-  const errorCount = useMemo(() => {
-    const rows = data?.indices || [];
-    return rows.filter((r) => r.failedStep || r.error).length;
-  }, [data]);
 
   return (
     <div>
