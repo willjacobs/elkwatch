@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import SortableTh from "../components/SortableTh.jsx";
+import HealthBadge from "../components/HealthBadge.jsx";
 import { compareStrings } from "../utils/tableSort.js";
 import { useClusters } from "../hooks/useCluster.js";
 import { useSearchParams, Link } from "react-router-dom";
@@ -165,39 +166,28 @@ export default function Alerts() {
 
   return (
     <div>
-      <header className="page-header">
+      <div className="page-toolbar">
         <h1 className="page-title">Alerts</h1>
-        <div className="page-actions">
-          <button type="button" className="btn btn-primary" onClick={() => load()}>
-            Refresh
-          </button>
-        </div>
-      </header>
-
-      <div className="toolbar">
-        <div className="cluster-select">
-          <label htmlFor="alerts-cluster">Cluster</label>
-          <select
-            id="alerts-cluster"
-            className="select-elk"
-            value={clusterFilter}
-            onChange={(e) => setClusterFilter(e.target.value)}
-          >
-            <option value="">All clusters</option>
-            {clusterNames.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
+        <span className="stat-chip">{filteredCount} alert{filteredCount !== 1 ? "s" : ""}</span>
+        <span className="toolbar-spacer" />
+        <select
+          className="filter-select"
+          value={clusterFilter}
+          onChange={(e) => setClusterFilter(e.target.value)}
+        >
+          <option value="">All clusters</option>
+          {clusterNames.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
         {urlCluster ? (
-          <div className="toolbar-actions">
-            <Link className="btn btn-secondary" to="/alerts">
-              Clear URL filter
-            </Link>
-          </div>
+          <Link className="btn btn-secondary" to="/alerts">
+            Clear URL filter
+          </Link>
         ) : null}
+        <button type="button" className="btn btn-primary" onClick={() => load()}>
+          Refresh
+        </button>
       </div>
 
       {alerts.length === 0 ? (
@@ -205,57 +195,33 @@ export default function Alerts() {
       ) : filteredCount === 0 ? (
         <p className="muted">No alerts match the current filter.</p>
       ) : (
-        <div className="card table-wrap">
+        <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <SortableTh
-                  label="Time"
-                  sortKey="time"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Cluster"
-                  sortKey="cluster"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Rule"
-                  sortKey="ruleId"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Severity"
-                  sortKey="severity"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Message"
-                  sortKey="message"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
+                <SortableTh label="Time" sortKey="time" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Severity" sortKey="severity" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Cluster" sortKey="cluster" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Rule" sortKey="ruleId" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Message" sortKey="message" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((a) => (
-                <tr key={a.id}>
-                  <td className="muted">{a.time}</td>
-                  <td>{a.cluster}</td>
-                  <td>{a.ruleId}</td>
-                  <td>{a.severity}</td>
-                  <td>{a.message}</td>
-                </tr>
-              ))}
+              {sortedRows.map((a) => {
+                const ts = new Date(a.time);
+                const sev = a.severity || "info";
+                return (
+                  <tr key={a.id}>
+                    <td className="muted" style={{ whiteSpace: "nowrap" }}>
+                      {ts.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td><HealthBadge tone={sev} label={sev} /></td>
+                    <td>{a.cluster}</td>
+                    <td className="text-mono">{a.ruleId}</td>
+                    <td>{a.message}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
