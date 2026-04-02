@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ClusterDonut from "../components/ClusterDonut.jsx";
+import KpiCard from "../components/KpiCard.jsx";
+import MeterBar from "../components/MeterBar.jsx";
+import SparklineChart from "../components/SparklineChart.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
+import SortableTh from "../components/SortableTh.jsx";
 import { useClusters } from "../hooks/useCluster.js";
+import { useNodeHistory } from "../hooks/useNodeHistory.js";
 import { formatBytes } from "../utils/format.js";
 import { Link, useSearchParams } from "react-router-dom";
 import { useRegisterGlobalRefresh } from "../hooks/useGlobalRefresh.js";
@@ -9,402 +14,206 @@ import { pushToast } from "../hooks/useToasts.js";
 import { ACTIVE_CLUSTER_KEY, persistPageCluster } from "../utils/clusterStorage.js";
 
 function parsePublishAddress(addr) {
-  if (addr == null || addr === "") return { host: "—", port: "" };
+  if (!addr) return { host: "—", port: "" };
   const s = String(addr);
   const lastColon = s.lastIndexOf(":");
   if (lastColon < 0) return { host: s, port: "" };
   const after = s.slice(lastColon + 1);
-  if (/^\d+$/.test(after)) {
-    return { host: s.slice(0, lastColon), port: `:${after}` };
-  }
-  return { host: s, port: "" };
+  return /^\d+$/.test(after) ? { host: s.slice(0, lastColon), port: `:${after}` } : { host: s, port: "" };
 }
 
-function diskBarClass(pct) {
-  if (pct == null) return "nodes-meter-fill nodes-meter-fill--disk";
-  if (pct >= 90) return "nodes-meter-fill nodes-meter-fill--disk-bad";
-  if (pct >= 80) return "nodes-meter-fill nodes-meter-fill--disk-warn";
-  return "nodes-meter-fill nodes-meter-fill--disk";
-}
-
-function heapBarClass(pct) {
-  if (pct == null) return "nodes-meter-fill nodes-meter-fill--heap";
-  if (pct >= 90) return "nodes-meter-fill nodes-meter-fill--heap-bad";
-  if (pct >= 80) return "nodes-meter-fill nodes-meter-fill--heap-warn";
-  return "nodes-meter-fill nodes-meter-fill--heap";
-}
-
-function rolesLabel(roles) {
-  if (!roles?.length) return "—";
-  return roles.join(", ");
-}
-
-function statusLabel(status) {
-  if (!status) return "unknown";
-  if (status === "green") return "healthy";
-  if (status === "yellow") return "degraded";
-  if (status === "red") return "error";
-  return String(status);
+function heapColor(pct) {
+  if (pct == null) return "#a78bfa";
+  if (pct >= 90) return "#f87171";
+  if (pct >= 80) return "#facc15";
+  return "#a78bfa";
 }
 
 export default function Nodes() {
-  const { data: clusters, loading: clustersLoading, error: clustersError } =
-    useClusters();
-  const names = useMemo(
-    () => (clusters || []).map((c) => c.name),
-    [clusters]
-  );
+  const { data: clusters, loading: clustersLoading, error: clustersError } = useClusters();
+  const names = useMemo(() => (clusters || []).map((c) => c.name), [clusters]);
   const [clusterName, setClusterName] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [sortKey, setSortKey] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
   const [searchParams] = useSearchParams();
   const urlCluster = searchParams.get("cluster");
-  const focus = searchParams.get("focus");
+  const { appendNodeData, getHistory } = useNodeHistory();
 
   useEffect(() => {
     if (!names.length) return;
-
-    const key = "elkwatch.cluster.nodes";
     let remembered = "";
-    try {
-      remembered = window.localStorage.getItem(key) || "";
-    } catch {
-      remembered = "";
-    }
+    try { remembered = window.localStorage.getItem("elkwatch.cluster.nodes") || ""; } catch { /* */ }
     let active = "";
-    try {
-      active = window.localStorage.getItem(ACTIVE_CLUSTER_KEY) || "";
-    } catch {
-      active = "";
-    }
-
-    const pick =
-      (urlCluster && names.includes(urlCluster) && urlCluster) ||
+    try { active = window.localStorage.getItem(ACTIVE_CLUSTER_KEY) || ""; } catch { /* */ }
+    const pick = (urlCluster && names.includes(urlCluster) && urlCluster) ||
       (remembered && names.includes(remembered) && remembered) ||
-      (active && names.includes(active) && active) ||
-      names[0];
-
-    if (!clusterName || clusterName !== pick) {
-      setClusterName(pick);
-    }
+      (active && names.includes(active) && active) || names[0];
+    if (clusterName !== pick) setClusterName(pick);
   }, [names, clusterName, urlCluster]);
 
-  useEffect(() => {
-    if (!clusterName) return;
-    persistPageCluster("nodes", clusterName);
-  }, [clusterName]);
+  useEffect(() => { if (clusterName) persistPageCluster("nodes", clusterName); }, [clusterName]);
 
   const load = useCallback(async () => {
     if (!clusterName) return;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const res = await fetch(
-        `/api/nodes/${encodeURIComponent(clusterName)}`
-      );
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
-      }
-      setData(await res.json());
+      const res = await fetch(`/api/nodes/${encodeURIComponent(clusterName)}`);
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || `HTTP ${res.status}`); }
+      const json = await res.json();
+      setData(json);
+      appendNodeData(clusterName, json.nodes);
     } catch (e) {
       setError(e.message);
       pushToast({ title: "Nodes failed", message: e.message, tone: "error" });
       setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [clusterName]);
+    } finally { setLoading(false); }
+  }, [clusterName, appendNodeData]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useRegisterGlobalRefresh(() => {
-    load();
-  });
+  useEffect(() => { load(); }, [load]);
+  useRegisterGlobalRefresh(() => { load(); });
 
   const summary = data?.summary;
-  const healthClass =
-    summary?.status === "green"
-      ? "health-green"
-      : summary?.status === "yellow"
-        ? "health-yellow"
-        : summary?.status === "red"
-          ? "health-red"
-          : "health-yellow";
 
-  const nodeCount = summary?.numberOfNodes ?? 0;
-  const nodeCountLabel =
-    nodeCount === 1 ? "1 node" : `${nodeCount} nodes`;
-
-  const nodesList = useMemo(() => {
-    const list = data?.nodes || [];
-    if (focus === "unassignedShards") {
-      return [...list].sort(
-        (a, b) => (b.diskUsedPercent ?? -1) - (a.diskUsedPercent ?? -1)
-      );
-    }
-    return list;
-  }, [data, focus]);
+  const onSort = useCallback((key) => {
+    setSortKey((prev) => {
+      if (prev === key) { setSortDir((d) => d === "asc" ? "desc" : "asc"); return prev; }
+      setSortDir("asc"); return key;
+    });
+  }, []);
 
   const nodeRows = useMemo(() => {
-    const list = nodesList || [];
+    const list = [...(data?.nodes || [])];
+    const mul = sortDir === "asc" ? 1 : -1;
+    list.sort((a, b) => {
+      if (sortKey === "name") return mul * String(a.name).localeCompare(String(b.name));
+      if (sortKey === "disk") return mul * ((a.diskUsedPercent ?? -1) - (b.diskUsedPercent ?? -1));
+      if (sortKey === "heap") return mul * ((a.heapUsedPercent ?? -1) - (b.heapUsedPercent ?? -1));
+      return 0;
+    });
     return list.map((n) => {
       const addr = n.httpPublishAddress || n.host || n.ip || "";
       const { host, port } = parsePublishAddress(addr);
-      return {
-        ...n,
-        hostLabel: host,
-        portLabel: port,
-      };
+      return { ...n, hostLabel: host, portLabel: port };
     });
-  }, [nodesList]);
+  }, [data, sortKey, sortDir]);
 
-  if (clustersLoading && !clusters) {
-    return <LoadingSpinner label="Loading clusters" />;
-  }
+  if (clustersLoading && !clusters) return <LoadingSpinner label="Loading clusters" />;
+  if (clustersError) return <p className="error">{clustersError}</p>;
 
-  if (clustersError) {
-    return <p className="error">{clustersError}</p>;
-  }
+  const statusColor = summary?.status === "green" ? "var(--clr-green)" : summary?.status === "yellow" ? "var(--clr-yellow)" : "var(--clr-red)";
 
   return (
-    <div className="nodes-page">
-      <header className="page-header">
+    <div>
+      <div className="page-toolbar">
         <h1 className="page-title">Nodes</h1>
-      </header>
-
-      <div className="nodes-subtitle">
-        {clusterName ? (
-          <>
-            <span className="nodes-subtitle-main">{clusterName}</span>
-            <span className="nodes-subtitle-sep">·</span>
-            <span className="nodes-subtitle-muted">last updated just now</span>
-          </>
-        ) : null}
-      </div>
-
-      <div className="toolbar nodes-toolbar">
-        <div className="nodes-toolbar-left">
-          <div className="cluster-select">
-            <label htmlFor="nodes-cluster">Cluster</label>
-            <select
-              id="nodes-cluster"
-              className="select-elk"
-              value={clusterName}
-              onChange={(e) => setClusterName(e.target.value)}
-            >
-              {names.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="toolbar-actions">
-            <button type="button" className="btn btn-primary" onClick={() => load()}>
-              Refresh
-            </button>
-          </div>
-        </div>
         {summary && (
-          <div className="nodes-toolbar-status">
-            <span className={`nodes-health-dot ${healthClass}`} />
-            <span className="nodes-toolbar-status-text">
-              Cluster status{" "}
-              <span className={`nodes-status-word ${healthClass}`}>
-                {summary.status}
-              </span>{" "}
-              <span className="nodes-status-sub">{statusLabel(summary.status)}</span>
-            </span>
-          </div>
+          <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--clr-muted2)" }}>
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: statusColor }} />
+            {clusterName} · {summary.status}
+          </span>
         )}
+        <div className="toolbar-spacer" />
+        <button type="button" className="btn btn-secondary" onClick={() => load()}>↻ Refresh</button>
       </div>
 
       {loading && <LoadingSpinner compact label="Loading nodes" />}
       {error && <p className="error">{error}</p>}
 
-      {data && !loading && !error && (
+      {data && !loading && (
         <>
-          <section className="nodes-kpis" aria-label="Cluster summary">
-            <div className="nodes-kpi">
-              <div className="nodes-kpi-label">Nodes</div>
-              <div className="nodes-kpi-value">{summary?.numberOfNodes ?? "—"}</div>
-              <div className="nodes-kpi-sub"> {nodeCount === 1 ? "1 master" : ""}</div>
-            </div>
-            <div className="nodes-kpi">
-              <div className="nodes-kpi-label">Active shards</div>
-              <div className="nodes-kpi-value">{summary?.activeShards ?? "—"}</div>
-              <div className="nodes-kpi-sub">
-                of{" "}
-                {summary?.activeShards != null && summary?.unassignedShards != null
-                  ? summary.activeShards + summary.unassignedShards
-                  : "—"}{" "}
-                total
-              </div>
-            </div>
-            <div className="nodes-kpi nodes-kpi--warn">
-              <div className="nodes-kpi-label">Unassigned</div>
-              <div className="nodes-kpi-value">
-                {summary?.unassignedShards ?? "—"}
-              </div>
-              <div className="nodes-kpi-sub">replica shards</div>
-            </div>
-            <div className="nodes-kpi">
-              <div className="nodes-kpi-label">Cluster status</div>
-              <div className={`nodes-kpi-value nodes-kpi-status ${healthClass}`}>
-                {summary?.status ?? "—"}
-              </div>
-              <div className="nodes-kpi-sub">{statusLabel(summary?.status)}</div>
-            </div>
-          </section>
+          {/* KPI strip */}
+          <div className="kpi-grid">
+            <KpiCard label="Nodes" value={summary?.numberOfNodes} sub={summary?.numberOfNodes === 1 ? "1 master" : ""} tone="blue" />
+            <KpiCard label="Active Shards" value={summary?.activeShards} sub={`of ${(summary?.activeShards ?? 0) + (summary?.unassignedShards ?? 0)} total`} />
+            <KpiCard label="Unassigned" value={summary?.unassignedShards} sub="replica shards" tone={summary?.unassignedShards > 0 ? "yellow" : "green"} />
+            <KpiCard label="Cluster Status" value={summary?.status} tone={summary?.status === "green" ? "green" : summary?.status === "yellow" ? "yellow" : "red"} />
+          </div>
 
-          <section className="nodes-grid" aria-label="Cluster details">
-            <div className="card nodes-panel">
-              <div className="nodes-panel-header">
-                <div className="nodes-panel-title">Shard distribution</div>
-                <Link
-                  to={`/indices?cluster=${encodeURIComponent(clusterName)}`}
-                  className="nodes-panel-link"
-                >
-                  View indices
-                </Link>
-              </div>
-              <div className="nodes-shards-wrap">
-                <ClusterDonut
-                  variant="shards"
-                  summary={summary}
-                  formatBytes={formatBytes}
-                  compact
-                />
+          {/* Viz panels */}
+          <div className="viz-panels">
+            <div className="card card-body" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+              <div className="section-title" style={{ alignSelf: "flex-start" }}>DISK USAGE</div>
+              <ClusterDonut variant="disk" summary={summary} formatBytes={formatBytes} compact />
+            </div>
+            <div className="card card-body" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+              <div className="section-title" style={{ alignSelf: "flex-start" }}>SHARD DISTRIBUTION</div>
+              <ClusterDonut variant="shards" summary={summary} formatBytes={formatBytes} compact />
+            </div>
+            <div className="card card-body">
+              <div className="section-title" style={{ marginBottom: "14px" }}>HEAP PER NODE</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {nodeRows.map((n) => {
+                  const history = getHistory(clusterName, n.name);
+                  const color = heapColor(n.heapUsedPercent);
+                  return (
+                    <div key={n.nodeId}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "11px", color: "var(--clr-muted2)" }}>{n.name}</span>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color }}>{n.heapUsedPercent != null ? `${n.heapUsedPercent}%` : "—"}</span>
+                      </div>
+                      {history.length > 1
+                        ? <SparklineChart data={history} color={color} height={30} />
+                        : <div style={{ height: "30px", background: "var(--clr-border)", borderRadius: "3px" }} />}
+                    </div>
+                  );
+                })}
               </div>
             </div>
+          </div>
 
-            <div className="card nodes-panel">
-              <div className="nodes-panel-header">
-                <div className="nodes-panel-title">Disk</div>
-              </div>
-              <div className="nodes-panel-body">
-                <div className="nodes-panel-donut">
-                  <ClusterDonut
-                    variant="disk"
-                    summary={summary}
-                    formatBytes={formatBytes}
-                    compact
-                  />
-                </div>
-                <div className="nodes-panel-metrics">
-                  <div className="nodes-mini-row">
-                    <div className="nodes-mini-swatch nodes-mini-swatch--disk" />
-                    <div className="nodes-mini-label">Used</div>
-                    <div className="nodes-mini-value">
-                      {formatBytes(summary?.diskUsedBytes)}
-                    </div>
-                  </div>
-                  <div className="nodes-mini-row">
-                    <div className="nodes-mini-swatch nodes-mini-swatch--muted" />
-                    <div className="nodes-mini-label">Free</div>
-                    <div className="nodes-mini-value">
-                      {formatBytes(summary?.diskFreeBytes)}
-                    </div>
-                  </div>
-                  <div className="nodes-mini-divider" />
-                  <div className="nodes-mini-row">
-                    <div className="nodes-mini-swatch nodes-mini-swatch--heap" />
-                    <div className="nodes-mini-label">Heap</div>
-                    <div className="nodes-mini-value">
-                      {summary?.heapUsedPercent != null
-                        ? `${summary.heapUsedPercent}%`
-                        : "—"}
-                    </div>
-                  </div>
-                  <div className="nodes-mini-sub">
-                    {summary?.heapUsedBytes != null && summary?.heapMaxBytes != null
-                      ? `${formatBytes(summary.heapUsedBytes)} / ${formatBytes(summary.heapMaxBytes)}`
-                      : "—"}
-                  </div>
-                </div>
-              </div>
+          {/* Node table */}
+          <div className="table-wrap">
+            <div className="card-header">
+              <span className="section-title">NODE LIST</span>
+              <span style={{ fontSize: "11px", color: "var(--clr-dim)" }}>{nodeRows.length} node{nodeRows.length !== 1 ? "s" : ""}</span>
             </div>
-          </section>
-
-          <section className="card nodes-table" aria-label="Node list">
-            <div className="nodes-panel-header">
-              <div className="nodes-panel-title">Node list</div>
-              <div className="nodes-panel-muted">{nodeCountLabel}</div>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Node</th>
-                    <th>Host</th>
-                    <th>Disk used</th>
-                    <th>Heap</th>
-                    <th>Roles</th>
+            <table>
+              <thead>
+                <tr>
+                  <SortableTh sortKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} label="Node" />
+                  <th>Host</th>
+                  <th>Roles</th>
+                  <SortableTh sortKey="disk" activeKey={sortKey} dir={sortDir} onSort={onSort} label="Disk used" />
+                  <SortableTh sortKey="heap" activeKey={sortKey} dir={sortDir} onSort={onSort} label="Heap" />
+                </tr>
+              </thead>
+              <tbody>
+                {nodeRows.map((n) => (
+                  <tr key={n.nodeId}>
+                    <td className="text-mono" style={{ color: "var(--clr-text)", fontWeight: 500 }}>{n.name}</td>
+                    <td className="text-mono">
+                      {n.hostLabel}
+                      {n.portLabel && <span style={{ color: "var(--clr-dim)" }}>{n.portLabel}</span>}
+                    </td>
+                    <td>
+                      {(n.roles || []).map((r) => (
+                        <span key={r} style={{
+                          display: "inline-block", marginRight: "3px", padding: "1px 6px", borderRadius: "4px",
+                          fontSize: "10px", fontWeight: 500,
+                          background: r === "master" ? "var(--clr-accent-bg)" : "var(--clr-surface-hi)",
+                          color: r === "master" ? "var(--clr-accent)" : "var(--clr-muted2)",
+                          border: `1px solid ${r === "master" ? "rgba(59,130,246,0.2)" : "var(--clr-border)"}`,
+                        }}>{r}</span>
+                      ))}
+                    </td>
+                    <td style={{ minWidth: "130px" }}><MeterBar pct={n.diskUsedPercent} label={n.diskUsedPercent != null ? formatBytes(n.diskUsedBytes) : undefined} /></td>
+                    <td style={{ minWidth: "130px" }}><MeterBar pct={n.heapUsedPercent} forceColor={heapColor(n.heapUsedPercent)} /></td>
                   </tr>
-                </thead>
-                <tbody>
-                  {nodeRows.map((n) => {
-                    const diskPct = n.diskUsedPercent;
-                    const heapPct = n.heapUsedPercent;
-                    return (
-                      <tr key={n.nodeId}>
-                        <td className="nodes-td-strong">{n.name}</td>
-                        <td className="nodes-td-mono">
-                          {n.hostLabel}
-                          {n.portLabel ? (
-                            <span className="nodes-td-muted">{n.portLabel}</span>
-                          ) : null}
-                        </td>
-                        <td>
-                          <div className="nodes-td-stack">
-                            <div className="nodes-td-accent">
-                              {diskPct != null ? `${diskPct}%` : "—"}
-                            </div>
-                            <div className="nodes-meter">
-                              <div
-                                className={diskBarClass(diskPct)}
-                                style={{
-                                  width:
-                                    diskPct != null
-                                      ? `${Math.min(100, diskPct)}%`
-                                      : "0%",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="nodes-td-stack">
-                            <div className="nodes-td-accent nodes-td-accent--heap">
-                              {heapPct != null ? `${heapPct}%` : "—"}
-                            </div>
-                            <div className="nodes-meter">
-                              <div
-                                className={heapBarClass(heapPct)}
-                                style={{
-                                  width:
-                                    heapPct != null
-                                      ? `${Math.min(100, heapPct)}%`
-                                      : "0%",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="nodes-td-muted" title={rolesLabel(n.roles)}>
-                          {rolesLabel(n.roles)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {summary && (
+            <div style={{ marginTop: "10px", textAlign: "right" }}>
+              <Link to={`/indices?cluster=${encodeURIComponent(clusterName)}`} style={{ fontSize: "11px", color: "var(--clr-muted2)" }}>
+                View indices →
+              </Link>
             </div>
-          </section>
+          )}
         </>
       )}
     </div>
