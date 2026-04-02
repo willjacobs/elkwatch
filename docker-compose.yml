@@ -4,8 +4,10 @@ services:
     environment:
       CONFIG_PATH: /app/config.yml
       PORT: "3001"
+      ALERT_DB_PATH: /app/data/alerts.db
     volumes:
       - ./config.yml:/app/config.yml:ro
+      - elkwatch-data:/app/data
     expose:
       - "3001"
 
@@ -15,3 +17,6 @@ services:
       - "3000:80"
     depends_on:
       - backend
+
+volumes:
+  elkwatch-data:

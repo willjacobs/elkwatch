@@ -1,7 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 const { loadConfig } = require("./config/loader");
-const { startAlertScheduler } = require("./services/alertScheduler");
+const { initAlertStore } = require("./services/alertStore");
+const {
+  startAlertScheduler,
+  getAlertSchedulerStatus,
+} = require("./services/alertScheduler");
 
 const clustersRouter = require("./routes/clusters");
 const indicesRouter = require("./routes/indices");
@@ -21,6 +25,13 @@ try {
   process.exit(1);
 }
 
+try {
+  initAlertStore();
+} catch (e) {
+  console.error("Failed to open alert database:", e.message);
+  process.exit(1);
+}
+
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
@@ -31,7 +42,10 @@ app.use((req, res, next) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true,
+    alerts: getAlertSchedulerStatus(req.config),
+  });
 });
 
 app.get("/metrics", getMetricsHandler(() => config));

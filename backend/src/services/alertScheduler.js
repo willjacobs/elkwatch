@@ -1,18 +1,9 @@
 const cron = require("node-cron");
 const { getClient } = require("./esClient");
-
-const MAX_ALERTS = 100;
-const alerts = [];
+const { insertAlert } = require("./alertStore");
 
 /** Per-index ingest tracking: key -> { docCount, lastIncreaseAt } */
 const ingestState = new Map();
-
-function pushAlert(entry) {
-  alerts.unshift(entry);
-  if (alerts.length > MAX_ALERTS) {
-    alerts.length = MAX_ALERTS;
-  }
-}
 
 function recordAlert(ruleName, clusterName, message, severity = "warning") {
   const entry = {
@@ -23,7 +14,7 @@ function recordAlert(ruleName, clusterName, message, severity = "warning") {
     message,
     severity,
   };
-  pushAlert(entry);
+  insertAlert(entry);
   return entry;
 }
 
@@ -159,20 +150,55 @@ async function runChecks(config) {
 
 let cronTask;
 
+/** Populated for GET /health so you can confirm cron is firing. */
+const schedulerState = {
+  startedAt: null,
+  lastRunStartedAt: null,
+  lastRunFinishedAt: null,
+  lastError: null,
+};
+
+async function runChecksWithTelemetry(config) {
+  schedulerState.lastRunStartedAt = new Date().toISOString();
+  schedulerState.lastError = null;
+  try {
+    await runChecks(config);
+  } catch (e) {
+    schedulerState.lastError = e.message || String(e);
+    console.error("Alert checks failed:", schedulerState.lastError);
+  } finally {
+    schedulerState.lastRunFinishedAt = new Date().toISOString();
+  }
+}
+
+function getAlertSchedulerStatus(config) {
+  const url = config?.alerts?.slack_webhook_url || "";
+  const rules = config?.alerts?.rules || [];
+  const activeRuleCount = rules.filter((r) => r.enabled !== false).length;
+  return {
+    cronEveryMinutes: 5,
+    schedulerRunning: Boolean(cronTask),
+    startedAt: schedulerState.startedAt,
+    lastRunStartedAt: schedulerState.lastRunStartedAt,
+    lastRunFinishedAt: schedulerState.lastRunFinishedAt,
+    lastError: schedulerState.lastError,
+    clusterCount: (config?.clusters || []).length,
+    activeRuleCount,
+    slackConfigured: Boolean(url && !url.includes("REPLACE_ME")),
+  };
+}
+
 function startAlertScheduler(config) {
   if (cronTask) {
     cronTask.stop();
   }
-  cronTask = cron.schedule("*/5 * * * *", () => runChecks(config));
+  schedulerState.startedAt = new Date().toISOString();
+  cronTask = cron.schedule("*/5 * * * *", () => runChecksWithTelemetry(config));
   console.log("Alert scheduler started (every 5 minutes)");
-}
-
-function getAlerts() {
-  return [...alerts];
 }
 
 module.exports = {
   startAlertScheduler,
-  getAlerts,
   runChecks,
+  getAlertSchedulerStatus,
 };
