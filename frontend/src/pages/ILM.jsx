@@ -316,50 +316,56 @@ export default function ILM() {
     }
   };
 
+  const phaseColors = { hot: “var(--clr-red)”, warm: “var(--clr-yellow)”, cold: “var(--clr-accent)”, frozen: “var(--clr-purple)”, delete: “var(--clr-dim)” };
+
+  const errorCount = useMemo(() => {
+    const rows = data?.indices || [];
+    return rows.filter((r) => r.failedStep || r.error).length;
+  }, [data]);
+
   return (
     <div>
-      <header className="page-header">
-        <h1 className="page-title">ILM</h1>
-      </header>
-      <div className="toolbar">
-        <div className="cluster-select">
-          <label htmlFor="ilm-cluster">Cluster</label>
-          <select
-            id="ilm-cluster"
-            className="select-elk"
-            value={clusterName}
-            onChange={(e) => setClusterName(e.target.value)}
-          >
-            {names.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="toolbar-actions">
-          <button type="button" className="btn btn-primary" onClick={() => load()}>
-            Refresh
-          </button>
-        </div>
+      <div className=”page-toolbar”>
+        <h1 className=”page-title”>ILM</h1>
+        {data?.indices && (
+          <>
+            <span className=”stat-chip”>{data.indices.length} indices</span>
+            {errorCount > 0 && (
+              <span className=”stat-chip” style={{ color: “var(--clr-red)” }}>
+                {errorCount} errors
+              </span>
+            )}
+          </>
+        )}
+        <span className=”toolbar-spacer” />
+        <select
+          className=”filter-select”
+          value={clusterName}
+          onChange={(e) => setClusterName(e.target.value)}
+        >
+          {names.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <button type=”button” className=”btn btn-primary” onClick={() => load()}>
+          Refresh
+        </button>
       </div>
 
-      {loading && <LoadingSpinner compact label="Loading ILM" />}
-      {error && <p className="error">{error}</p>}
+      {loading && <LoadingSpinner compact label=”Loading ILM” />}
+      {error && <p className=”error”>{error}</p>}
 
       {data?.policies && (
-        <div className="card" style={{ marginBottom: "1rem" }}>
-          <h3 className="subpanel-title">Policy editor (dry-run)</h3>
-          <div className="muted" style={{ marginBottom: "0.75rem" }}>
-            No writes are performed. This checks JSON validity, shows a structural diff,
-            and lists indices currently using the selected policy.
-          </div>
-          <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
-            <div className="cluster-select">
-              <label htmlFor="ilm-policy">Policy</label>
+        <div className=”card” style={{ marginBottom: “1rem” }}>
+          <div className=”card-body”>
+            <h3 className=”subpanel-title”>Policy editor (dry-run)</h3>
+            <div className=”muted” style={{ marginBottom: “0.75rem” }}>
+              No writes are performed. This checks JSON validity, shows a structural diff,
+              and lists indices currently using the selected policy.
+            </div>
+            <div className=”page-toolbar” style={{ marginBottom: “0.75rem” }}>
               <select
-                id="ilm-policy"
-                className="select-elk"
+                className=”filter-select”
                 value={editorPolicyName}
                 onChange={(e) => {
                   setEditorPolicyName(e.target.value);
@@ -367,343 +373,296 @@ export default function ILM() {
                 }}
               >
                 {policyNames.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
+                  <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-            </div>
-            <div className="toolbar-actions">
-              <label className="diff-toggle-inline">
+              <span className=”toolbar-spacer” />
+              <label className=”diff-toggle-inline”>
                 <input
-                  type="checkbox"
+                  type=”checkbox”
                   checked={includeMetaDiff}
                   onChange={(e) => setIncludeMetaDiff(e.target.checked)}
                 />
                 Include _meta in diff
               </label>
               <button
-                type="button"
-                className="btn"
+                type=”button”
+                className=”btn”
                 onClick={() => loadPolicyIntoEditor(editorPolicyName)}
                 disabled={!editorPolicyName}
               >
                 Load current
               </button>
               <button
-                type="button"
-                className="btn btn-primary"
+                type=”button”
+                className=”btn btn-primary”
                 onClick={runDryRun}
                 disabled={dryRunLoading || !editorPolicyName}
               >
-                {dryRunLoading ? "Validating…" : "Validate dry-run"}
+                {dryRunLoading ? “Validating…” : “Validate dry-run”}
               </button>
             </div>
-          </div>
 
-          <textarea
-            className="input-elk"
-            style={{
-              width: "100%",
-              minHeight: "220px",
-              fontFamily:
-                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-              fontSize: "12px",
-              lineHeight: "1.4",
-            }}
-            value={editorText}
-            onChange={(e) => setEditorText(e.target.value)}
-            spellCheck={false}
-          />
+            <textarea
+              className=”input-elk”
+              style={{
+                width: “100%”,
+                minHeight: “220px”,
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, “Liberation Mono”, “Courier New”, monospace',
+                fontSize: “12px”,
+                lineHeight: “1.4”,
+              }}
+              value={editorText}
+              onChange={(e) => setEditorText(e.target.value)}
+              spellCheck={false}
+            />
 
-          {dryRunResult?.error && (
-            <p className="error" style={{ marginTop: "0.75rem" }}>
-              {dryRunResult.error}
-            </p>
-          )}
+            {dryRunResult?.error && (
+              <p className=”error” style={{ marginTop: “0.75rem” }}>
+                {dryRunResult.error}
+              </p>
+            )}
 
-          {dryRunResult && !dryRunResult.error && (
-            <div style={{ marginTop: "0.75rem" }}>
-              {dryRunResult.validationErrors?.length > 0 && (
-                <div className="card" style={{ padding: "0.75rem", marginBottom: "0.75rem" }}>
-                  <div className="error" style={{ marginBottom: "0.25rem" }}>
-                    Validation issues
-                  </div>
-                  <ul className="muted" style={{ margin: 0, paddingLeft: "1.25rem" }}>
-                    {dryRunResult.validationErrors.map((m) => (
-                      <li key={m}>{m}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="toolbar" style={{ marginBottom: "0.5rem" }}>
-                <div className="table-meta muted">
-                  Diff: {dryRunResult.diff?.length ?? 0} change(s) (showing up to 200)
-                </div>
-                <div className="table-meta muted">
-                  Affected indices: {dryRunResult.affectedIndices?.length ?? 0}
-                </div>
-              </div>
-
-              {!includeMetaDiff ? (
-                <div className="muted" style={{ marginBottom: "0.5rem" }}>
-                  _meta changes are hidden by default.
-                </div>
-              ) : null}
-
-              {Array.isArray(dryRunResult.diff) && dryRunResult.diff.length > 0 && (
-                <div className="card table-wrap" style={{ padding: "0.5rem" }}>
-                  <div className="diff-header">
-                    <div className="muted">
-                      Showing {diffExpanded ? Math.min(200, dryRunResult.diff.length) : Math.min(50, dryRunResult.diff.length)} of{" "}
-                      {Math.min(200, dryRunResult.diff.length)} changes
+            {dryRunResult && !dryRunResult.error && (
+              <div style={{ marginTop: “0.75rem” }}>
+                {dryRunResult.validationErrors?.length > 0 && (
+                  <div className=”card” style={{ padding: “0.75rem”, marginBottom: “0.75rem” }}>
+                    <div className=”error” style={{ marginBottom: “0.25rem” }}>
+                      Validation issues
                     </div>
-                    {dryRunResult.diff.length > 50 ? (
-                      <button
-                        type="button"
-                        className="btn btn-secondary diff-toggle"
-                        onClick={() => setDiffExpanded((v) => !v)}
-                      >
-                        {diffExpanded ? "Show fewer" : "Show all"}
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className="diff-groups">
-                    {groupedDiff.map((g) => {
-                      const collapsed = collapsedGroups[g.key] === true;
-                      return (
-                        <section key={g.key} className="diff-group">
-                          <button
-                            type="button"
-                            className="diff-group-toggle"
-                            onClick={() =>
-                              setCollapsedGroups((prev) => ({
-                                ...prev,
-                                [g.key]: !prev[g.key],
-                              }))
-                            }
-                          >
-                            <span className="diff-group-title">{g.key}</span>
-                            <span className="diff-group-count">
-                              {g.items.length} change{g.items.length === 1 ? "" : "s"}
-                            </span>
-                            <span className="diff-group-chevron">{collapsed ? "▸" : "▾"}</span>
-                          </button>
-                          {!collapsed ? (
-                            <table className="diff-table">
-                              <thead>
-                                <tr>
-                                  <th>Path</th>
-                                  <th className="diff-col-before">Before</th>
-                                  <th className="diff-col-after">After</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {g.items.map((d, idx) => (
-                                  <tr key={`${g.key}-${d.path}-${idx}`}>
-                                    <td className="diff-path">
-                                      {renderDiffPath(d.path)}
-                                    </td>
-                                    <td className="diff-before">
-                                      <code className="diff-code">
-                                        <span className="diff-sign diff-sign--before">-</span>
-                                        {typeof d.before === "string"
-                                          ? d.before
-                                          : JSON.stringify(d.before)}
-                                      </code>
-                                    </td>
-                                    <td className="diff-after">
-                                      <code className="diff-code">
-                                        <span className="diff-sign diff-sign--after">+</span>
-                                        {typeof d.after === "string"
-                                          ? d.after
-                                          : JSON.stringify(d.after)}
-                                      </code>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : null}
-                        </section>
-                      );
-                    })}
-                  </div>
-                  {dryRunResult.diff.length > 200 ? (
-                    <div className="muted" style={{ marginTop: "0.5rem" }}>
-                      Showing up to 200 diff entries.
-                    </div>
-                  ) : null}
-                </div>
-              )}
-
-              {Array.isArray(dryRunResult.affectedIndices) &&
-                dryRunResult.affectedIndices.length > 0 && (
-                  <div className="card table-wrap" style={{ padding: "0.5rem", marginTop: "0.75rem" }}>
-                    <h4 className="subpanel-title" style={{ marginBottom: "0.5rem" }}>
-                      Indices using “{dryRunResult.policyName}”
-                    </h4>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Index</th>
-                          <th>Managed</th>
-                          <th>Phase</th>
-                          <th>Action</th>
-                          <th>Step</th>
-                          <th>Failed</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dryRunResult.affectedIndices.slice(0, 50).map((row) => (
-                          <tr key={row.index}>
-                            <td>{row.index}</td>
-                            <td>{row.managed ? "yes" : "no"}</td>
-                            <td>{row.phase ?? "—"}</td>
-                            <td>{row.action ?? "—"}</td>
-                            <td>{row.step ?? "—"}</td>
-                            <td className={row.failedStep || row.error ? "error" : "muted"}>
-                              {row.failedStep ||
-                                (row.error ? JSON.stringify(row.error) : "—")}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {dryRunResult.affectedIndices.length > 50 && (
-                      <div className="muted" style={{ marginTop: "0.5rem" }}>
-                        Showing first 50 indices.
-                      </div>
-                    )}
+                    <ul className=”muted” style={{ margin: 0, paddingLeft: “1.25rem” }}>
+                      {dryRunResult.validationErrors.map((m) => (
+                        <li key={m}>{m}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
-            </div>
-          )}
+
+                <div className=”toolbar” style={{ marginBottom: “0.5rem” }}>
+                  <div className=”table-meta muted”>
+                    Diff: {dryRunResult.diff?.length ?? 0} change(s) (showing up to 200)
+                  </div>
+                  <div className=”table-meta muted”>
+                    Affected indices: {dryRunResult.affectedIndices?.length ?? 0}
+                  </div>
+                </div>
+
+                {!includeMetaDiff ? (
+                  <div className=”muted” style={{ marginBottom: “0.5rem” }}>
+                    _meta changes are hidden by default.
+                  </div>
+                ) : null}
+
+                {Array.isArray(dryRunResult.diff) && dryRunResult.diff.length > 0 && (
+                  <div className=”card table-wrap” style={{ padding: “0.5rem” }}>
+                    <div className=”diff-header”>
+                      <div className=”muted”>
+                        Showing {diffExpanded ? Math.min(200, dryRunResult.diff.length) : Math.min(50, dryRunResult.diff.length)} of{“ “}
+                        {Math.min(200, dryRunResult.diff.length)} changes
+                      </div>
+                      {dryRunResult.diff.length > 50 ? (
+                        <button
+                          type=”button”
+                          className=”btn btn-secondary diff-toggle”
+                          onClick={() => setDiffExpanded((v) => !v)}
+                        >
+                          {diffExpanded ? “Show fewer” : “Show all”}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className=”diff-groups”>
+                      {groupedDiff.map((g) => {
+                        const collapsed = collapsedGroups[g.key] === true;
+                        return (
+                          <section key={g.key} className=”diff-group”>
+                            <button
+                              type=”button”
+                              className=”diff-group-toggle”
+                              onClick={() =>
+                                setCollapsedGroups((prev) => ({
+                                  ...prev,
+                                  [g.key]: !prev[g.key],
+                                }))
+                              }
+                            >
+                              <span className=”diff-group-title”>{g.key}</span>
+                              <span className=”diff-group-count”>
+                                {g.items.length} change{g.items.length === 1 ? “” : “s”}
+                              </span>
+                              <span className=”diff-group-chevron”>{collapsed ? “▸” : “▾”}</span>
+                            </button>
+                            {!collapsed ? (
+                              <table className=”diff-table”>
+                                <thead>
+                                  <tr>
+                                    <th>Path</th>
+                                    <th className=”diff-col-before”>Before</th>
+                                    <th className=”diff-col-after”>After</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {g.items.map((d, idx) => (
+                                    <tr key={`${g.key}-${d.path}-${idx}`}>
+                                      <td className=”diff-path”>
+                                        {renderDiffPath(d.path)}
+                                      </td>
+                                      <td className=”diff-before”>
+                                        <code className=”diff-code”>
+                                          <span className=”diff-sign diff-sign--before”>-</span>
+                                          {typeof d.before === “string”
+                                            ? d.before
+                                            : JSON.stringify(d.before)}
+                                        </code>
+                                      </td>
+                                      <td className=”diff-after”>
+                                        <code className=”diff-code”>
+                                          <span className=”diff-sign diff-sign--after”>+</span>
+                                          {typeof d.after === “string”
+                                            ? d.after
+                                            : JSON.stringify(d.after)}
+                                        </code>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : null}
+                          </section>
+                        );
+                      })}
+                    </div>
+                    {dryRunResult.diff.length > 200 ? (
+                      <div className=”muted” style={{ marginTop: “0.5rem” }}>
+                        Showing up to 200 diff entries.
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {Array.isArray(dryRunResult.affectedIndices) &&
+                  dryRunResult.affectedIndices.length > 0 && (
+                    <div className=”card table-wrap” style={{ padding: “0.5rem”, marginTop: “0.75rem” }}>
+                      <h4 className=”subpanel-title” style={{ marginBottom: “0.5rem” }}>
+                        Indices using “{dryRunResult.policyName}”
+                      </h4>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Index</th>
+                            <th>Managed</th>
+                            <th>Phase</th>
+                            <th>Action</th>
+                            <th>Step</th>
+                            <th>Failed</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dryRunResult.affectedIndices.slice(0, 50).map((row) => (
+                            <tr key={row.index}>
+                              <td>{row.index}</td>
+                              <td>{row.managed ? “yes” : “no”}</td>
+                              <td>{row.phase ?? “—“}</td>
+                              <td>{row.action ?? “—“}</td>
+                              <td>{row.step ?? “—“}</td>
+                              <td className={row.failedStep || row.error ? “error” : “muted”}>
+                                {row.failedStep ||
+                                  (row.error ? JSON.stringify(row.error) : “—“)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {dryRunResult.affectedIndices.length > 50 && (
+                        <div className=”muted” style={{ marginTop: “0.5rem” }}>
+                          Showing first 50 indices.
+                        </div>
+                      )}
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {data?.indices && (
-        <div className="card table-wrap">
-          <h3 className="subpanel-title">Per-index lifecycle</h3>
-          <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
-            <div className="cluster-select">
-              <label htmlFor="ilm-search">Search</label>
+        <div className=”table-wrap”>
+          <div className=”page-toolbar” style={{ marginBottom: “0.75rem” }}>
+            <h3 className=”subpanel-title” style={{ margin: 0 }}>Per-index lifecycle</h3>
+            <span className=”toolbar-spacer” />
+            <div className=”search-box”>
+              <span className=”search-icon”>⌕</span>
               <input
-                id="ilm-search"
-                className="input-elk"
                 value={indexSearch}
                 onChange={(e) => setIndexSearch(e.target.value)}
-                placeholder="index name contains…"
+                placeholder=”Filter by name…”
               />
             </div>
-            <div className="cluster-select">
-              <label htmlFor="ilm-managed">Managed</label>
-              <select
-                id="ilm-managed"
-                className="select-elk"
-                value={managedFilter}
-                onChange={(e) => setManagedFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                <option value="yes">yes</option>
-                <option value="no">no</option>
-              </select>
-            </div>
-            <div className="cluster-select">
-              <label htmlFor="ilm-phase">Phase</label>
-              <select
-                id="ilm-phase"
-                className="select-elk"
-                value={phaseFilter}
-                onChange={(e) => setPhaseFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                {phaseOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="cluster-select">
-              <label htmlFor="ilm-errors">Errors only</label>
-              <select
-                id="ilm-errors"
-                className="select-elk"
-                value={errorsOnly ? "yes" : "no"}
-                onChange={(e) => setErrorsOnly(e.target.value === "yes")}
-              >
-                <option value="no">no</option>
-                <option value="yes">yes</option>
-              </select>
-            </div>
-          </div>
-          <div className="table-meta muted" style={{ marginBottom: "0.5rem" }}>
-            Showing {sortedRows.length} of {data.indices.length}
+            <select
+              className=”filter-select”
+              value={managedFilter}
+              onChange={(e) => setManagedFilter(e.target.value)}
+            >
+              <option value=””>All managed</option>
+              <option value=”yes”>yes</option>
+              <option value=”no”>no</option>
+            </select>
+            <select
+              className=”filter-select”
+              value={phaseFilter}
+              onChange={(e) => setPhaseFilter(e.target.value)}
+            >
+              <option value=””>All phases</option>
+              {phaseOptions.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <select
+              className=”filter-select”
+              value={errorsOnly ? “yes” : “no”}
+              onChange={(e) => setErrorsOnly(e.target.value === “yes”)}
+            >
+              <option value=”no”>All rows</option>
+              <option value=”yes”>Errors only</option>
+            </select>
           </div>
           <table>
             <thead>
               <tr>
-                <SortableTh
-                  label="Index"
-                  sortKey="index"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Managed"
-                  sortKey="managed"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Phase"
-                  sortKey="phase"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Action"
-                  sortKey="action"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Step"
-                  sortKey="step"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Failed step"
-                  sortKey="failedStep"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
+                <SortableTh label=”Index” sortKey=”index” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label=”Managed” sortKey=”managed” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label=”Phase” sortKey=”phase” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label=”Action” sortKey=”action” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label=”Step” sortKey=”step” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label=”Failed step” sortKey=”failedStep” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((row) => (
-                <tr key={row.index}>
-                  <td>{row.index}</td>
-                  <td>{row.managed ? "yes" : "no"}</td>
-                  <td>{row.phase ?? "—"}</td>
-                  <td>{row.action ?? "—"}</td>
-                  <td>{row.step ?? "—"}</td>
-                  <td className={row.failedStep || row.error ? "error" : "muted"}>
-                    {row.failedStep || (row.error ? JSON.stringify(row.error) : "—")}
-                  </td>
-                </tr>
-              ))}
+              {sortedRows.map((r) => {
+                const phaseColor = phaseColors[r.phase] || “var(--clr-muted2)”;
+                return (
+                  <tr key={r.index}>
+                    <td className=”text-mono”>{r.index}</td>
+                    <td>{r.managed ? “yes” : “no”}</td>
+                    <td>
+                      <span style={{ fontSize: “11px”, fontWeight: 600, padding: “2px 8px”, borderRadius: “99px”, background: `color-mix(in srgb, ${phaseColor} 15%, transparent)`, color: phaseColor }}>
+                        {r.phase || “—“}
+                      </span>
+                    </td>
+                    <td>{r.action ?? “—“}</td>
+                    <td>{r.step ?? “—“}</td>
+                    <td className={r.failedStep || r.error ? “error” : “muted”}>
+                      {r.failedStep || (r.error ? JSON.stringify(r.error) : “—“)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          <div className=”table-footer”>
+            Showing {sortedRows.length} of {data.indices.length} indices
+          </div>
         </div>
       )}
     </div>
