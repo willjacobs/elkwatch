@@ -316,7 +316,7 @@ export default function ILM() {
     }
   };
 
-  const phaseColors = { hot: “var(--clr-red)”, warm: “var(--clr-yellow)”, cold: “var(--clr-accent)”, frozen: “var(--clr-purple)”, delete: “var(--clr-dim)” };
+  const phaseColors = { hot: "var(--clr-red)", warm: "var(--clr-yellow)", cold: "var(--clr-accent)", frozen: "var(--clr-purple)", delete: "var(--clr-dim)" };
 
   const errorCount = useMemo(() => {
     const rows = data?.indices || [];
@@ -325,21 +325,21 @@ export default function ILM() {
 
   return (
     <div>
-      <div className=”page-toolbar”>
-        <h1 className=”page-title”>ILM</h1>
+      <div className="page-toolbar">
+        <h1 className="page-title">ILM</h1>
         {data?.indices && (
           <>
-            <span className=”stat-chip”>{data.indices.length} indices</span>
+            <span className="stat-chip">{data.indices.length} indices</span>
             {errorCount > 0 && (
-              <span className=”stat-chip” style={{ color: “var(--clr-red)” }}>
+              <span className="stat-chip" style={{ color: "var(--clr-red)" }}>
                 {errorCount} errors
               </span>
             )}
           </>
         )}
-        <span className=”toolbar-spacer” />
+        <span className="toolbar-spacer" />
         <select
-          className=”filter-select”
+          className="filter-select"
           value={clusterName}
           onChange={(e) => setClusterName(e.target.value)}
         >
@@ -347,25 +347,25 @@ export default function ILM() {
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        <button type=”button” className=”btn btn-primary” onClick={() => load()}>
+        <button type="button" className="btn btn-primary" onClick={() => load()}>
           Refresh
         </button>
       </div>
 
-      {loading && <LoadingSpinner compact label=”Loading ILM” />}
-      {error && <p className=”error”>{error}</p>}
+      {loading && <LoadingSpinner compact label="Loading ILM" />}
+      {error && <p className="error">{error}</p>}
 
       {data?.policies && (
-        <div className=”card” style={{ marginBottom: “1rem” }}>
-          <div className=”card-body”>
-            <h3 className=”subpanel-title”>Policy editor (dry-run)</h3>
-            <div className=”muted” style={{ marginBottom: “0.75rem” }}>
+        <div className="card" style={{ marginBottom: "1rem" }}>
+          <div className="card-body">
+            <h3 className="subpanel-title">Policy editor (dry-run)</h3>
+            <div className="muted" style={{ marginBottom: "0.75rem" }}>
               No writes are performed. This checks JSON validity, shows a structural diff,
               and lists indices currently using the selected policy.
             </div>
-            <div className=”page-toolbar” style={{ marginBottom: “0.75rem” }}>
+            <div className="page-toolbar" style={{ marginBottom: "0.75rem" }}>
               <select
-                className=”filter-select”
+                className="filter-select"
                 value={editorPolicyName}
                 onChange={(e) => {
                   setEditorPolicyName(e.target.value);
@@ -376,42 +376,42 @@ export default function ILM() {
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-              <span className=”toolbar-spacer” />
-              <label className=”diff-toggle-inline”>
+              <span className="toolbar-spacer" />
+              <label className="diff-toggle-inline">
                 <input
-                  type=”checkbox”
+                  type="checkbox"
                   checked={includeMetaDiff}
                   onChange={(e) => setIncludeMetaDiff(e.target.checked)}
                 />
                 Include _meta in diff
               </label>
               <button
-                type=”button”
-                className=”btn”
+                type="button"
+                className="btn"
                 onClick={() => loadPolicyIntoEditor(editorPolicyName)}
                 disabled={!editorPolicyName}
               >
                 Load current
               </button>
               <button
-                type=”button”
-                className=”btn btn-primary”
+                type="button"
+                className="btn btn-primary"
                 onClick={runDryRun}
                 disabled={dryRunLoading || !editorPolicyName}
               >
-                {dryRunLoading ? “Validating…” : “Validate dry-run”}
+                {dryRunLoading ? "Validating…" : "Validate dry-run"}
               </button>
             </div>
 
             <textarea
-              className=”input-elk”
+              className="input-elk"
               style={{
-                width: “100%”,
-                minHeight: “220px”,
+                width: "100%",
+                minHeight: "220px",
                 fontFamily:
-                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, “Liberation Mono”, “Courier New”, monospace',
-                fontSize: “12px”,
-                lineHeight: “1.4”,
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                fontSize: "12px",
+                lineHeight: "1.4",
               }}
               value={editorText}
               onChange={(e) => setEditorText(e.target.value)}
@@ -419,19 +419,19 @@ export default function ILM() {
             />
 
             {dryRunResult?.error && (
-              <p className=”error” style={{ marginTop: “0.75rem” }}>
+              <p className="error" style={{ marginTop: "0.75rem" }}>
                 {dryRunResult.error}
               </p>
             )}
 
             {dryRunResult && !dryRunResult.error && (
-              <div style={{ marginTop: “0.75rem” }}>
+              <div style={{ marginTop: "0.75rem" }}>
                 {dryRunResult.validationErrors?.length > 0 && (
-                  <div className=”card” style={{ padding: “0.75rem”, marginBottom: “0.75rem” }}>
-                    <div className=”error” style={{ marginBottom: “0.25rem” }}>
+                  <div className="card" style={{ padding: "0.75rem", marginBottom: "0.75rem" }}>
+                    <div className="error" style={{ marginBottom: "0.25rem" }}>
                       Validation issues
                     </div>
-                    <ul className=”muted” style={{ margin: 0, paddingLeft: “1.25rem” }}>
+                    <ul className="muted" style={{ margin: 0, paddingLeft: "1.25rem" }}>
                       {dryRunResult.validationErrors.map((m) => (
                         <li key={m}>{m}</li>
                       ))}
@@ -439,46 +439,46 @@ export default function ILM() {
                   </div>
                 )}
 
-                <div className=”toolbar” style={{ marginBottom: “0.5rem” }}>
-                  <div className=”table-meta muted”>
+                <div className="toolbar" style={{ marginBottom: "0.5rem" }}>
+                  <div className="table-meta muted">
                     Diff: {dryRunResult.diff?.length ?? 0} change(s) (showing up to 200)
                   </div>
-                  <div className=”table-meta muted”>
+                  <div className="table-meta muted">
                     Affected indices: {dryRunResult.affectedIndices?.length ?? 0}
                   </div>
                 </div>
 
                 {!includeMetaDiff ? (
-                  <div className=”muted” style={{ marginBottom: “0.5rem” }}>
+                  <div className="muted" style={{ marginBottom: "0.5rem" }}>
                     _meta changes are hidden by default.
                   </div>
                 ) : null}
 
                 {Array.isArray(dryRunResult.diff) && dryRunResult.diff.length > 0 && (
-                  <div className=”card table-wrap” style={{ padding: “0.5rem” }}>
-                    <div className=”diff-header”>
-                      <div className=”muted”>
-                        Showing {diffExpanded ? Math.min(200, dryRunResult.diff.length) : Math.min(50, dryRunResult.diff.length)} of{“ “}
+                  <div className="card table-wrap" style={{ padding: "0.5rem" }}>
+                    <div className="diff-header">
+                      <div className="muted">
+                        Showing {diffExpanded ? Math.min(200, dryRunResult.diff.length) : Math.min(50, dryRunResult.diff.length)} of{" "}
                         {Math.min(200, dryRunResult.diff.length)} changes
                       </div>
                       {dryRunResult.diff.length > 50 ? (
                         <button
-                          type=”button”
-                          className=”btn btn-secondary diff-toggle”
+                          type="button"
+                          className="btn btn-secondary diff-toggle"
                           onClick={() => setDiffExpanded((v) => !v)}
                         >
-                          {diffExpanded ? “Show fewer” : “Show all”}
+                          {diffExpanded ? "Show fewer" : "Show all"}
                         </button>
                       ) : null}
                     </div>
-                    <div className=”diff-groups”>
+                    <div className="diff-groups">
                       {groupedDiff.map((g) => {
                         const collapsed = collapsedGroups[g.key] === true;
                         return (
-                          <section key={g.key} className=”diff-group”>
+                          <section key={g.key} className="diff-group">
                             <button
-                              type=”button”
-                              className=”diff-group-toggle”
+                              type="button"
+                              className="diff-group-toggle"
                               onClick={() =>
                                 setCollapsedGroups((prev) => ({
                                   ...prev,
@@ -486,39 +486,39 @@ export default function ILM() {
                                 }))
                               }
                             >
-                              <span className=”diff-group-title”>{g.key}</span>
-                              <span className=”diff-group-count”>
-                                {g.items.length} change{g.items.length === 1 ? “” : “s”}
+                              <span className="diff-group-title">{g.key}</span>
+                              <span className="diff-group-count">
+                                {g.items.length} change{g.items.length === 1 ? "" : "s"}
                               </span>
-                              <span className=”diff-group-chevron”>{collapsed ? “▸” : “▾”}</span>
+                              <span className="diff-group-chevron">{collapsed ? "▸" : "▾"}</span>
                             </button>
                             {!collapsed ? (
-                              <table className=”diff-table”>
+                              <table className="diff-table">
                                 <thead>
                                   <tr>
                                     <th>Path</th>
-                                    <th className=”diff-col-before”>Before</th>
-                                    <th className=”diff-col-after”>After</th>
+                                    <th className="diff-col-before">Before</th>
+                                    <th className="diff-col-after">After</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {g.items.map((d, idx) => (
                                     <tr key={`${g.key}-${d.path}-${idx}`}>
-                                      <td className=”diff-path”>
+                                      <td className="diff-path">
                                         {renderDiffPath(d.path)}
                                       </td>
-                                      <td className=”diff-before”>
-                                        <code className=”diff-code”>
-                                          <span className=”diff-sign diff-sign--before”>-</span>
-                                          {typeof d.before === “string”
+                                      <td className="diff-before">
+                                        <code className="diff-code">
+                                          <span className="diff-sign diff-sign--before">-</span>
+                                          {typeof d.before === "string"
                                             ? d.before
                                             : JSON.stringify(d.before)}
                                         </code>
                                       </td>
-                                      <td className=”diff-after”>
-                                        <code className=”diff-code”>
-                                          <span className=”diff-sign diff-sign--after”>+</span>
-                                          {typeof d.after === “string”
+                                      <td className="diff-after">
+                                        <code className="diff-code">
+                                          <span className="diff-sign diff-sign--after">+</span>
+                                          {typeof d.after === "string"
                                             ? d.after
                                             : JSON.stringify(d.after)}
                                         </code>
@@ -533,7 +533,7 @@ export default function ILM() {
                       })}
                     </div>
                     {dryRunResult.diff.length > 200 ? (
-                      <div className=”muted” style={{ marginTop: “0.5rem” }}>
+                      <div className="muted" style={{ marginTop: "0.5rem" }}>
                         Showing up to 200 diff entries.
                       </div>
                     ) : null}
@@ -542,9 +542,9 @@ export default function ILM() {
 
                 {Array.isArray(dryRunResult.affectedIndices) &&
                   dryRunResult.affectedIndices.length > 0 && (
-                    <div className=”card table-wrap” style={{ padding: “0.5rem”, marginTop: “0.75rem” }}>
-                      <h4 className=”subpanel-title” style={{ marginBottom: “0.5rem” }}>
-                        Indices using “{dryRunResult.policyName}”
+                    <div className="card table-wrap" style={{ padding: "0.5rem", marginTop: "0.75rem" }}>
+                      <h4 className="subpanel-title" style={{ marginBottom: "0.5rem" }}>
+                        Indices using "{dryRunResult.policyName}"
                       </h4>
                       <table>
                         <thead>
@@ -561,20 +561,20 @@ export default function ILM() {
                           {dryRunResult.affectedIndices.slice(0, 50).map((row) => (
                             <tr key={row.index}>
                               <td>{row.index}</td>
-                              <td>{row.managed ? “yes” : “no”}</td>
-                              <td>{row.phase ?? “—“}</td>
-                              <td>{row.action ?? “—“}</td>
-                              <td>{row.step ?? “—“}</td>
-                              <td className={row.failedStep || row.error ? “error” : “muted”}>
+                              <td>{row.managed ? "yes" : "no"}</td>
+                              <td>{row.phase ?? "—"}</td>
+                              <td>{row.action ?? "—"}</td>
+                              <td>{row.step ?? "—"}</td>
+                              <td className={row.failedStep || row.error ? "error" : "muted"}>
                                 {row.failedStep ||
-                                  (row.error ? JSON.stringify(row.error) : “—“)}
+                                  (row.error ? JSON.stringify(row.error) : "—")}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                       {dryRunResult.affectedIndices.length > 50 && (
-                        <div className=”muted” style={{ marginTop: “0.5rem” }}>
+                        <div className="muted" style={{ marginTop: "0.5rem" }}>
                           Showing first 50 indices.
                         </div>
                       )}
@@ -587,80 +587,80 @@ export default function ILM() {
       )}
 
       {data?.indices && (
-        <div className=”table-wrap”>
-          <div className=”page-toolbar” style={{ marginBottom: “0.75rem” }}>
-            <h3 className=”subpanel-title” style={{ margin: 0 }}>Per-index lifecycle</h3>
-            <span className=”toolbar-spacer” />
-            <div className=”search-box”>
-              <span className=”search-icon”>⌕</span>
+        <div className="table-wrap">
+          <div className="page-toolbar" style={{ marginBottom: "0.75rem" }}>
+            <h3 className="subpanel-title" style={{ margin: 0 }}>Per-index lifecycle</h3>
+            <span className="toolbar-spacer" />
+            <div className="search-box">
+              <span className="search-icon">⌕</span>
               <input
                 value={indexSearch}
                 onChange={(e) => setIndexSearch(e.target.value)}
-                placeholder=”Filter by name…”
+                placeholder="Filter by name…"
               />
             </div>
             <select
-              className=”filter-select”
+              className="filter-select"
               value={managedFilter}
               onChange={(e) => setManagedFilter(e.target.value)}
             >
-              <option value=””>All managed</option>
-              <option value=”yes”>yes</option>
-              <option value=”no”>no</option>
+              <option value="">All managed</option>
+              <option value="yes">yes</option>
+              <option value="no">no</option>
             </select>
             <select
-              className=”filter-select”
+              className="filter-select"
               value={phaseFilter}
               onChange={(e) => setPhaseFilter(e.target.value)}
             >
-              <option value=””>All phases</option>
+              <option value="">All phases</option>
               {phaseOptions.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
             <select
-              className=”filter-select”
-              value={errorsOnly ? “yes” : “no”}
-              onChange={(e) => setErrorsOnly(e.target.value === “yes”)}
+              className="filter-select"
+              value={errorsOnly ? "yes" : "no"}
+              onChange={(e) => setErrorsOnly(e.target.value === "yes")}
             >
-              <option value=”no”>All rows</option>
-              <option value=”yes”>Errors only</option>
+              <option value="no">All rows</option>
+              <option value="yes">Errors only</option>
             </select>
           </div>
           <table>
             <thead>
               <tr>
-                <SortableTh label=”Index” sortKey=”index” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortableTh label=”Managed” sortKey=”managed” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortableTh label=”Phase” sortKey=”phase” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortableTh label=”Action” sortKey=”action” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortableTh label=”Step” sortKey=”step” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
-                <SortableTh label=”Failed step” sortKey=”failedStep” activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Index" sortKey="index" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Managed" sortKey="managed" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Phase" sortKey="phase" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Action" sortKey="action" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Step" sortKey="step" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Failed step" sortKey="failedStep" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
               {sortedRows.map((r) => {
-                const phaseColor = phaseColors[r.phase] || “var(--clr-muted2)”;
+                const phaseColor = phaseColors[r.phase] || "var(--clr-muted2)";
                 return (
                   <tr key={r.index}>
-                    <td className=”text-mono”>{r.index}</td>
-                    <td>{r.managed ? “yes” : “no”}</td>
+                    <td className="text-mono">{r.index}</td>
+                    <td>{r.managed ? "yes" : "no"}</td>
                     <td>
-                      <span style={{ fontSize: “11px”, fontWeight: 600, padding: “2px 8px”, borderRadius: “99px”, background: `color-mix(in srgb, ${phaseColor} 15%, transparent)`, color: phaseColor }}>
-                        {r.phase || “—“}
+                      <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px", background: `color-mix(in srgb, ${phaseColor} 15%, transparent)`, color: phaseColor }}>
+                        {r.phase || "—"}
                       </span>
                     </td>
-                    <td>{r.action ?? “—“}</td>
-                    <td>{r.step ?? “—“}</td>
-                    <td className={r.failedStep || r.error ? “error” : “muted”}>
-                      {r.failedStep || (r.error ? JSON.stringify(r.error) : “—“)}
+                    <td>{r.action ?? "—"}</td>
+                    <td>{r.step ?? "—"}</td>
+                    <td className={r.failedStep || r.error ? "error" : "muted"}>
+                      {r.failedStep || (r.error ? JSON.stringify(r.error) : "—")}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <div className=”table-footer”>
+          <div className="table-footer">
             Showing {sortedRows.length} of {data.indices.length} indices
           </div>
         </div>
