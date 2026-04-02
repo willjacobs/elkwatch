@@ -212,9 +212,7 @@ export default function Indices() {
           <option value="open">open</option>
           <option value="close">close</option>
         </select>
-        <button type="button" className="btn btn-primary" onClick={() => load()}>
-          Refresh
-        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => load()}><span style={{ fontSize: "16px" }}>↻</span> Refresh</button>
       </div>
 
       {loading && <LoadingSpinner compact label="Loading indices" />}

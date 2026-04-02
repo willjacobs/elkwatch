@@ -347,9 +347,7 @@ export default function ILM() {
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        <button type="button" className="btn btn-primary" onClick={() => load()}>
-          Refresh
-        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => load()}><span style={{ fontSize: "16px" }}>↻</span> Refresh</button>
       </div>
 
       {loading && <LoadingSpinner compact label="Loading ILM" />}
