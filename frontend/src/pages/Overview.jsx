@@ -37,7 +37,7 @@ export default function Overview() {
       <div className="page-toolbar">
         <h1 className="page-title">Overview</h1>
         <div className="toolbar-spacer" />
-        <button type="button" className="btn btn-secondary" onClick={() => refetch()}>↻ Refresh</button>
+        <button type="button" className="btn btn-secondary" onClick={() => refetch()}><span style={{ fontSize: "16px" }}>↻</span> Refresh</button>
       </div>
 
       <div className="cluster-grid">

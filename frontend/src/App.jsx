@@ -119,6 +119,7 @@ export default function App() {
             className="topbar-pill"
             onClick={() => setCtxVisible((v) => !v)}
             title={ctxVisible ? "Hide panel" : "Show panel"}
+            style={{ fontSize: "16px" }}
           >
             {ctxVisible ? "\u2039" : "\u203A"}
           </button>
@@ -127,6 +128,7 @@ export default function App() {
             className="topbar-pill"
             onClick={() => refreshNow()}
             title="Refresh"
+            style={{ fontSize: "16px" }}
           >
             {"\u21BB"}
           </button>
