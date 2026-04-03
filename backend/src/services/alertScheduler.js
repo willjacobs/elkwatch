@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const { getClient } = require("./esClient");
 const { insertAlert } = require("./alertStore");
+const { listRules, getSetting, ruleCount, createRule, setSetting } = require("./configStore");
 
 /** Per-index ingest tracking: key -> { docCount, lastIncreaseAt } */
 const ingestState = new Map();
@@ -139,11 +140,18 @@ async function runRule(cluster, rule, config) {
 
 async function runChecks(config) {
   const clusters = config.clusters || [];
-  const rules = config.alerts?.rules || [];
+  const rules = listRules();
+  const slackUrl = getSetting("slack_webhook_url") || config.alerts?.slack_webhook_url || "";
 
   for (const cluster of clusters) {
     for (const rule of rules) {
-      await runRule(cluster, rule, config);
+      const ruleObj = {
+        name: rule.name,
+        type: rule.type,
+        enabled: rule.enabled,
+        ...rule.config,
+      };
+      await runRule(cluster, ruleObj, { ...config, alerts: { ...config.alerts, slack_webhook_url: slackUrl } });
     }
   }
 }
@@ -172,9 +180,9 @@ async function runChecksWithTelemetry(config) {
 }
 
 function getAlertSchedulerStatus(config) {
-  const url = config?.alerts?.slack_webhook_url || "";
-  const rules = config?.alerts?.rules || [];
-  const activeRuleCount = rules.filter((r) => r.enabled !== false).length;
+  const slackUrl = getSetting("slack_webhook_url") || config?.alerts?.slack_webhook_url || "";
+  const rules = listRules();
+  const activeRuleCount = rules.filter((r) => r.enabled).length;
   return {
     cronEveryMinutes: 5,
     schedulerRunning: Boolean(cronTask),
@@ -184,21 +192,53 @@ function getAlertSchedulerStatus(config) {
     lastError: schedulerState.lastError,
     clusterCount: (config?.clusters || []).length,
     activeRuleCount,
-    slackConfigured: Boolean(url && !url.includes("REPLACE_ME")),
+    slackConfigured: Boolean(slackUrl && !slackUrl.includes("REPLACE_ME")),
   };
+}
+
+function seedFromConfig(config) {
+  if (ruleCount() > 0) return;
+  const rules = config.alerts?.rules || [];
+  for (const rule of rules) {
+    createRule({
+      name: rule.name || rule.type,
+      type: rule.type,
+      enabled: rule.enabled !== false,
+      config: buildConfig(rule),
+    });
+  }
+  const slackUrl = config.alerts?.slack_webhook_url;
+  if (slackUrl) {
+    setSetting("slack_webhook_url", slackUrl);
+  }
+  if (rules.length) {
+    console.log(`Seeded ${rules.length} alert rule(s) from config.yml`);
+  }
+}
+
+function buildConfig(rule) {
+  if (rule.type === "disk_usage") return { threshold_percent: rule.threshold_percent ?? 80 };
+  if (rule.type === "ingest_stall") return { index_pattern: rule.index_pattern || "*", threshold_minutes: rule.threshold_minutes ?? 60 };
+  return {};
 }
 
 function startAlertScheduler(config) {
   if (cronTask) {
     cronTask.stop();
   }
+  seedFromConfig(config);
   schedulerState.startedAt = new Date().toISOString();
   cronTask = cron.schedule("*/5 * * * *", () => runChecksWithTelemetry(config));
   console.log("Alert scheduler started (every 5 minutes)");
 }
 
+function restartAlertScheduler(config) {
+  startAlertScheduler(config);
+}
+
 module.exports = {
   startAlertScheduler,
+  restartAlertScheduler,
   runChecks,
   getAlertSchedulerStatus,
 };
