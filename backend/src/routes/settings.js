@@ -12,7 +12,7 @@ const { restartAlertScheduler } = require("../services/alertScheduler");
 
 const router = express.Router();
 
-const VALID_TYPES = ["disk_usage", "ilm_error", "ingest_stall"];
+const VALID_TYPES = ["disk_usage", "ilm_error", "ingest_stall", "cluster_health_change", "heap_pressure", "unassigned_shards", "shard_count"];
 
 function validateRule(body) {
   const errors = [];
@@ -36,6 +36,24 @@ function validateRule(body) {
     const m = config.threshold_minutes;
     if (m === undefined || typeof m !== "number" || m <= 0) {
       errors.push("ingest_stall requires config.threshold_minutes (positive number)");
+    }
+  }
+  if (body.type === "heap_pressure") {
+    const t = config.threshold_percent;
+    if (t === undefined || typeof t !== "number" || t < 1 || t > 100) {
+      errors.push("heap_pressure requires config.threshold_percent (1-100)");
+    }
+  }
+  if (body.type === "unassigned_shards") {
+    const m = config.threshold_minutes;
+    if (m === undefined || typeof m !== "number" || m <= 0) {
+      errors.push("unassigned_shards requires config.threshold_minutes (positive number)");
+    }
+  }
+  if (body.type === "shard_count") {
+    const c = config.threshold_count;
+    if (c === undefined || typeof c !== "number" || c <= 0) {
+      errors.push("shard_count requires config.threshold_count (positive number)");
     }
   }
   return errors;
