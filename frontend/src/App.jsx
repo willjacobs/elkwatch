@@ -7,6 +7,7 @@ import Alerts from "./pages/Alerts.jsx";
 import Nodes from "./pages/Nodes.jsx";
 import Templates from "./pages/Templates.jsx";
 import Docs from "./pages/Docs.jsx";
+import Settings from "./pages/Settings.jsx";
 import { IconHelp } from "./components/SidebarIcons.jsx";
 import { useGlobalRefreshController } from "./hooks/useGlobalRefresh.js";
 import { useClusters } from "./hooks/useCluster.js";
@@ -90,6 +91,7 @@ export default function App() {
     if (p === "/alerts") return "Alerts";
     if (p === "/templates") return "Templates";
     if (p === "/docs") return "Documentation";
+    if (p === "/settings") return "Settings";
     return "";
   }, [location.pathname]);
 
@@ -153,6 +155,7 @@ export default function App() {
             <Route path="/nodes" element={<Nodes />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/docs" element={<Docs />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>
       </div>

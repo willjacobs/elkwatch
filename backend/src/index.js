@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { loadConfig } = require("./config/loader");
 const { initAlertStore } = require("./services/alertStore");
+const { initConfigTables } = require("./services/configStore");
 const {
   startAlertScheduler,
   getAlertSchedulerStatus,
@@ -13,6 +14,7 @@ const ilmRouter = require("./routes/ilm");
 const alertsRouter = require("./routes/alerts");
 const nodesRouter = require("./routes/nodes");
 const templatesRouter = require("./routes/templates");
+const settingsRouter = require("./routes/settings");
 const { getMetricsHandler } = require("./metrics");
 
 const PORT = process.env.PORT || 3001;
@@ -29,6 +31,13 @@ try {
   initAlertStore();
 } catch (e) {
   console.error("Failed to open alert database:", e.message);
+  process.exit(1);
+}
+
+try {
+  initConfigTables();
+} catch (e) {
+  console.error("Failed to init config tables:", e.message);
   process.exit(1);
 }
 
@@ -56,6 +65,7 @@ app.use("/api/ilm", ilmRouter);
 app.use("/api/alerts", alertsRouter);
 app.use("/api/nodes", nodesRouter);
 app.use("/api/templates", templatesRouter);
+app.use("/api/settings", settingsRouter);
 
 app.listen(PORT, () => {
   console.log(`Elkwatch backend listening on :${PORT}`);
