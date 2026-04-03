@@ -7,12 +7,20 @@ const RULE_TYPES = [
   { value: "disk_usage", label: "Disk Usage" },
   { value: "ilm_error", label: "ILM Error" },
   { value: "ingest_stall", label: "Ingest Stall" },
+  { value: "cluster_health_change", label: "Cluster Health Change" },
+  { value: "heap_pressure", label: "Heap Pressure" },
+  { value: "unassigned_shards", label: "Unassigned Shards" },
+  { value: "shard_count", label: "Shard Count" },
 ];
 
 const DEFAULT_CONFIGS = {
   disk_usage: { threshold_percent: 80 },
   ilm_error: {},
   ingest_stall: { index_pattern: "*", threshold_minutes: 60 },
+  cluster_health_change: {},
+  heap_pressure: { threshold_percent: 85 },
+  unassigned_shards: { threshold_minutes: 10 },
+  shard_count: { threshold_count: 1000 },
 };
 
 export default function Settings() {
@@ -224,6 +232,30 @@ function RuleCard({ rule, onToggle, onEdit, onDelete }) {
               </div>
             </>
           )}
+          {rule.type === "cluster_health_change" && (
+            <div>
+              <div className="settings-rule-field-label">Config</div>
+              <div className="settings-rule-field-value">Alerts on status degradation</div>
+            </div>
+          )}
+          {rule.type === "heap_pressure" && (
+            <div>
+              <div className="settings-rule-field-label">Threshold</div>
+              <div className="settings-rule-field-value"><strong>{rule.config.threshold_percent ?? 85}%</strong></div>
+            </div>
+          )}
+          {rule.type === "unassigned_shards" && (
+            <div>
+              <div className="settings-rule-field-label">Duration threshold</div>
+              <div className="settings-rule-field-value"><strong>{rule.config.threshold_minutes ?? 10} min</strong></div>
+            </div>
+          )}
+          {rule.type === "shard_count" && (
+            <div>
+              <div className="settings-rule-field-label">Max shards</div>
+              <div className="settings-rule-field-value"><strong>{rule.config.threshold_count ?? 1000}</strong></div>
+            </div>
+          )}
         </div>
       </div>
       <div className="settings-rule-actions">
@@ -304,6 +336,45 @@ function RuleForm({ initial, onSave, onCancel }) {
               type="number" min="1"
               value={config.threshold_minutes ?? 60}
               onChange={(e) => setConfig({ ...config, threshold_minutes: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+      )}
+
+      {type === "heap_pressure" && (
+        <div className="settings-form-row">
+          <div className="settings-form-group">
+            <label>Threshold (%)</label>
+            <input
+              type="number" min="1" max="100"
+              value={config.threshold_percent ?? 85}
+              onChange={(e) => setConfig({ ...config, threshold_percent: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+      )}
+
+      {type === "unassigned_shards" && (
+        <div className="settings-form-row">
+          <div className="settings-form-group">
+            <label>Duration threshold (minutes)</label>
+            <input
+              type="number" min="1"
+              value={config.threshold_minutes ?? 10}
+              onChange={(e) => setConfig({ ...config, threshold_minutes: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+      )}
+
+      {type === "shard_count" && (
+        <div className="settings-form-row">
+          <div className="settings-form-group">
+            <label>Max shard count</label>
+            <input
+              type="number" min="1"
+              value={config.threshold_count ?? 1000}
+              onChange={(e) => setConfig({ ...config, threshold_count: Number(e.target.value) })}
             />
           </div>
         </div>

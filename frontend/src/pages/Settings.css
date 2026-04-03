@@ -36,6 +36,10 @@
 .settings-type-disk_usage   { background: rgba(59,130,246,0.1);  color: var(--clr-accent); }
 .settings-type-ilm_error    { background: rgba(167,139,250,0.1); color: var(--clr-purple); }
 .settings-type-ingest_stall { background: rgba(74,222,128,0.1);  color: var(--clr-green); }
+.settings-type-cluster_health_change { background: rgba(248,113,113,0.1); color: var(--clr-red); }
+.settings-type-heap_pressure         { background: rgba(250,204,21,0.1);  color: var(--clr-yellow); }
+.settings-type-unassigned_shards     { background: rgba(251,146,60,0.1);  color: #fb923c; }
+.settings-type-shard_count           { background: rgba(56,189,248,0.1);  color: #38bdf8; }
 
 .settings-rule-config { display: flex; gap: 16px; flex-wrap: wrap; }
 .settings-rule-field-label { font-size: 10px; color: var(--clr-dim); text-transform: uppercase; letter-spacing: 0.05em; }
