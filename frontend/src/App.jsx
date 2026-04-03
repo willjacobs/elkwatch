@@ -6,6 +6,8 @@ import ILM from "./pages/ILM.jsx";
 import Alerts from "./pages/Alerts.jsx";
 import Nodes from "./pages/Nodes.jsx";
 import Templates from "./pages/Templates.jsx";
+import Docs from "./pages/Docs.jsx";
+import { IconHelp } from "./components/SidebarIcons.jsx";
 import { useGlobalRefreshController } from "./hooks/useGlobalRefresh.js";
 import { useClusters } from "./hooks/useCluster.js";
 import Toasts from "./components/Toasts.jsx";
@@ -87,6 +89,7 @@ export default function App() {
     if (p === "/ilm") return "ILM";
     if (p === "/alerts") return "Alerts";
     if (p === "/templates") return "Templates";
+    if (p === "/docs") return "Documentation";
     return "";
   }, [location.pathname]);
 
@@ -132,6 +135,14 @@ export default function App() {
           >
             {"\u21BB"}
           </button>
+          <button
+            type="button"
+            className="topbar-pill"
+            onClick={() => navigate("/docs")}
+            title="Help & Docs"
+          >
+            <IconHelp style={{ width: 14, height: 14 }} />
+          </button>
         </div>
         <div className="page-content">
           <Routes>
@@ -141,6 +152,7 @@ export default function App() {
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/nodes" element={<Nodes />} />
             <Route path="/templates" element={<Templates />} />
+            <Route path="/docs" element={<Docs />} />
           </Routes>
         </div>
       </div>
