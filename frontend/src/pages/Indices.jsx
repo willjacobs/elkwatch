@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import SortableTh from "../components/SortableTh.jsx";
+import HealthBadge from "../components/HealthBadge.jsx";
 import { useClusters } from "../hooks/useCluster.js";
 import { useSearchParams } from "react-router-dom";
 import { useRegisterGlobalRefresh } from "../hooks/useGlobalRefresh.js";
@@ -155,6 +156,16 @@ export default function Indices() {
     return list;
   }, [indices, sortKey, sortDir, search, healthFilter, statusFilter]);
 
+  const unhealthyCount = useMemo(() => {
+    const rows = indices?.indices || [];
+    return rows.filter((r) => r.health !== "green").length;
+  }, [indices]);
+
+  const maxBytes = useMemo(
+    () => Math.max(1, ...(indices?.indices || []).map((i) => parseStoreSizeToBytes(i.storeSize) || 0)),
+    [indices]
+  );
+
   if (clustersLoading && !clusters) {
     return <LoadingSpinner label="Loading clusters" />;
   }
@@ -165,150 +176,102 @@ export default function Indices() {
 
   return (
     <div>
-      <header className="page-header">
+      <div className="page-toolbar">
         <h1 className="page-title">Indices</h1>
-      </header>
-      <div className="toolbar">
-        <div className="cluster-select">
-          <label htmlFor="idx-cluster">Cluster</label>
-          <select
-            id="idx-cluster"
-            className="select-elk"
-            value={clusterName}
-            onChange={(e) => setClusterName(e.target.value)}
-          >
-            {names.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+        {indices?.indices && (
+          <>
+            <span className="stat-chip">{indices.indices.length} total</span>
+            {unhealthyCount > 0 && (
+              <span className="stat-chip" style={{ color: "var(--clr-red)" }}>
+                {unhealthyCount} unhealthy
+              </span>
+            )}
+          </>
+        )}
+        <span className="toolbar-spacer" />
+        <div className="search-box">
+          <span className="search-icon">⌕</span>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by name…" />
         </div>
-        <div className="cluster-select">
-          <label htmlFor="idx-filter">Pattern</label>
-          <input
-            id="idx-filter"
-            className="input-elk"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-        <div className="cluster-select">
-          <label htmlFor="idx-search">Search</label>
-          <input
-            id="idx-search"
-            className="input-elk"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="index name contains…"
-          />
-        </div>
-        <div className="cluster-select">
-          <label htmlFor="idx-health">Health</label>
-          <select
-            id="idx-health"
-            className="select-elk"
-            value={healthFilter}
-            onChange={(e) => setHealthFilter(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="green">green</option>
-            <option value="yellow">yellow</option>
-            <option value="red">red</option>
-          </select>
-        </div>
-        <div className="cluster-select">
-          <label htmlFor="idx-status">Status</label>
-          <select
-            id="idx-status"
-            className="select-elk"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="open">open</option>
-            <option value="close">close</option>
-          </select>
-        </div>
-        <div className="toolbar-actions">
-          <button type="button" className="btn btn-primary" onClick={() => load()}>
-            Apply
-          </button>
-        </div>
+        <select
+          className="filter-select"
+          value={healthFilter}
+          onChange={(e) => setHealthFilter(e.target.value)}
+        >
+          <option value="">All health</option>
+          <option value="green">green</option>
+          <option value="yellow">yellow</option>
+          <option value="red">red</option>
+        </select>
+        <select
+          className="filter-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="">All status</option>
+          <option value="open">open</option>
+          <option value="close">close</option>
+        </select>
+        <button type="button" className="btn btn-secondary" onClick={() => load()}><span style={{ fontSize: "16px" }}>↻</span> Refresh</button>
       </div>
 
-      {loading && (
-        <LoadingSpinner compact label="Loading indices" />
-      )}
+      {loading && <LoadingSpinner compact label="Loading indices" />}
       {error && <p className="error">{error}</p>}
 
       {indices?.indices && (
-        <div className="card table-wrap">
-          <div className="table-meta muted" style={{ marginBottom: "0.5rem" }}>
-            Showing {sortedRows.length} of {indices.indices.length}
-          </div>
+        <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <SortableTh
-                  label="Index"
-                  sortKey="index"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Health"
-                  sortKey="health"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Status"
-                  sortKey="status"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Docs"
-                  sortKey="docsCount"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Store"
-                  sortKey="storeSize"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
-                <SortableTh
-                  label="Created"
-                  sortKey="creationDate"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={handleSort}
-                />
+                <SortableTh label="Index" sortKey="index" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Health" sortKey="health" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Pri" sortKey="docsCount" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Rep" sortKey="docsCount" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Docs" sortKey="docsCount" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Store size" sortKey="storeSize" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
+                <SortableTh label="Created" sortKey="creationDate" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((row) => (
-                <tr key={row.index}>
-                  <td>{row.index}</td>
-                  <td className={row.health === "green" ? "status-green" : row.health === "yellow" ? "status-yellow" : "status-red"}>
-                    {row.health}
-                  </td>
-                  <td>{row.status}</td>
-                  <td>{row.docsCount}</td>
-                  <td>{row.storeSize}</td>
-                  <td className="muted">{row.creationDate || "—"}</td>
-                </tr>
-              ))}
+              {sortedRows.map((idx) => {
+                const storeBytes = parseStoreSizeToBytes(idx.storeSize) || 0;
+                const barPct = Math.round((storeBytes / maxBytes) * 100);
+                return (
+                  <tr key={idx.index}>
+                    <td className="text-mono">{idx.index}</td>
+                    <td><HealthBadge tone={idx.health} label={idx.health} /></td>
+                    <td>
+                      <span style={{
+                        fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "99px",
+                        background: idx.status === "open"
+                          ? "color-mix(in srgb, var(--clr-green) 15%, transparent)"
+                          : "color-mix(in srgb, var(--clr-muted2) 15%, transparent)",
+                        color: idx.status === "open" ? "var(--clr-green)" : "var(--clr-muted2)"
+                      }}>
+                        {idx.status}
+                      </span>
+                    </td>
+                    <td className="tabular-num">{idx.pri ?? "—"}</td>
+                    <td className="tabular-num">{idx.rep ?? "—"}</td>
+                    <td className="tabular-num">{idx.docsCount}</td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span className="tabular-num" style={{ minWidth: "48px", textAlign: "right" }}>{idx.storeSize || "—"}</span>
+                        <div style={{ flex: 1, height: "4px", borderRadius: "2px", background: "var(--clr-surface-hi)" }}>
+                          <div style={{ width: `${barPct}%`, height: "100%", borderRadius: "2px", background: "var(--clr-accent)" }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="muted">{idx.creationDate || "—"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          <div className="table-footer">
+            Showing {sortedRows.length} of {indices.indices.length} indices
+          </div>
         </div>
       )}
     </div>

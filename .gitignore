@@ -1,3 +1,4 @@
+.superpowers/
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -37,6 +38,9 @@ coverage/
 
 # Runtime config (mounted into backend container; do not commit)
 config.yml
+
+# Local SQLite alert history (backend dev)
+backend/data/
 
 # Docker
 *.pid

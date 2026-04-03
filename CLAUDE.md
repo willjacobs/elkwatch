@@ -29,6 +29,7 @@ elkwatch/
 │       ├── metrics.js               # Prometheus register for GET /metrics
 │       └── services/
 │           ├── esClient.js           # ES client factory (cached per cluster)
+│           ├── alertStore.js         # SQLite persistence for alert history
 │           └── alertScheduler.js     # node-cron alert checks + Slack webhooks
 ├── frontend/
 │   └── src/
