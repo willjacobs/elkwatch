@@ -5,6 +5,7 @@ import {
   IconIndices,
   IconNodes,
   IconOverview,
+  IconSettings,
   IconTemplates,
 } from "./SidebarIcons.jsx";
 
@@ -44,6 +45,14 @@ export default function IconRail({ clusters, toWithCluster }) {
         </NavLink>
       ))}
       <div className="rail-spacer" />
+      <NavLink
+        to="/settings"
+        className={({ isActive }) => `rail-item${isActive ? " active" : ""}`}
+        title="Settings"
+        aria-label="Settings"
+      >
+        <IconSettings />
+      </NavLink>
     </nav>
   );
 }
