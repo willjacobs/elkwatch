@@ -113,7 +113,7 @@ alerts:
 | `disk_usage` | Cluster disk usage exceeds `threshold_percent` |
 | `ilm_error` | Any index has a `failed_step` in its ILM explain output |
 
-Alerts are checked every 5 minutes. History is available in the Alerts tab.
+Alerts are checked every 5 minutes. History is stored in **SQLite** (survives backend restarts) and shown in the Alerts tab.
 
 ---
 
@@ -128,6 +128,8 @@ Alerts are checked every 5 minutes. History is available in the Alerts tab.
                            │  │ Alert Scheduler │  │
                            │  │ (node-cron 5m)  │  │
                            │  └────────┬────────┘  │
+                           │           ▼           │
+                           │     SQLite (alerts)   │
                            └───────────┼────────────┘
                                        │
                     ┌──────────────────┼──────────────────┐
@@ -135,7 +137,7 @@ Alerts are checked every 5 minutes. History is available in the Alerts tab.
              ES Cluster 1      ES Cluster 2        Slack Webhook
 ```
 
-The backend proxies all Elasticsearch API calls — your cluster credentials never touch the browser.
+The backend proxies all Elasticsearch API calls — your cluster credentials never touch the browser. Alert rows are written to a SQLite file (default `./backend/data/alerts.db` in dev; `/app/data/alerts.db` in Compose via the `elkwatch-data` volume).
 
 ---
 
@@ -230,11 +232,11 @@ The output will print the public IP. Access Elkwatch at `http://<public-ip>:3000
 | `GET` | `/api/indices/:cluster` | Index list with stats |
 | `GET` | `/api/ilm/:cluster` | ILM policies and per-index phase status |
 | `POST` | `/api/ilm/:cluster/dry-run` | Validate ILM policy JSON and return structural diff (no writes) |
-| `GET` | `/api/alerts` | Recent alert history (last 100) |
+| `GET` | `/api/alerts` | Alert history (default last 500; optional `?limit=` up to 2000) |
 | `GET` | `/api/nodes/:cluster` | Per-node filesystem and JVM heap stats |
 | `GET` | `/api/templates/:cluster` | Composable index templates (names, patterns, `composed_of`) |
 | `GET` | `/metrics` | Prometheus text exposition |
-| `GET` | `/health` | Backend liveness check |
+| `GET` | `/health` | Liveness + alert scheduler status (`lastRunFinishedAt`, `slackConfigured`, rule counts) |
 
 ---
 
@@ -273,10 +275,10 @@ Done in-tree:
 - [x] Per-node disk breakdown
 - [x] Prometheus metrics endpoint (`GET /metrics`)
 - [x] ILM policy editor (dry-run mode)
+- [x] Persistent alert history (SQLite)
 
 Still open:
 
-- [ ] Persistent alert history (SQLite)
 - [ ] Auth / login wall for the dashboard itself
 
 PRs welcome.

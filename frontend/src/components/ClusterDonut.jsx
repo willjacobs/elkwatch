@@ -4,54 +4,33 @@ import { Doughnut } from "react-chartjs-2";
 
 ChartJS.register(ArcElement, Tooltip);
 
-const GRAY = "rgba(58, 63, 75, 0.95)";
+const GRAY = "rgba(26,31,46,0.95)";
 
-function diskColors(usedPercent) {
-  if (usedPercent == null) return ["#5b9fd4", GRAY];
-  if (usedPercent >= 90) return ["#f87171", GRAY];
-  if (usedPercent >= 80) return ["#facc15", GRAY];
-  return ["#5b9fd4", GRAY];
+function diskColors(pct) {
+  if (pct == null) return ["#3b82f6", GRAY];
+  if (pct >= 90) return ["#f87171", GRAY];
+  if (pct >= 80) return ["#facc15", GRAY];
+  return ["#3b82f6", GRAY];
 }
 
-function heapColors(usedPercent) {
-  if (usedPercent == null) return ["#2dd4bf", GRAY];
-  if (usedPercent >= 90) return ["#f87171", GRAY];
-  if (usedPercent >= 80) return ["#facc15", GRAY];
-  return ["#2dd4bf", GRAY];
+function heapColors(pct) {
+  if (pct == null) return ["#a78bfa", GRAY];
+  if (pct >= 90) return ["#f87171", GRAY];
+  if (pct >= 80) return ["#facc15", GRAY];
+  return ["#a78bfa", GRAY];
 }
 
-function shardColors(unassigned) {
-  if (unassigned > 0) return ["#4ade80", "#f87171"];
-  return ["#4ade80", GRAY];
-}
-
-/**
- * Doughnut with HTML center label (not drawn on canvas). cutout 72% per mockup.
- */
 export default function ClusterDonut({ variant, summary, formatBytes, compact }) {
   const fmt = formatBytes || ((n) => String(n));
 
   const { data, options, centerMain, centerSub, legendItems } = useMemo(() => {
-    const tooltipLabel = (ctx) => {
-      const label = ctx.label || "";
-      const v = ctx.raw;
-      if (variant === "shards") {
-        return ` ${label}: ${v}`;
-      }
-      return ` ${label}: ${fmt(v)}`;
-    };
-
     const opts = {
       cutout: "72%",
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: tooltipLabel,
-          },
-        },
+        tooltip: { callbacks: { label: (ctx) => variant === "shards" ? ` ${ctx.label}: ${ctx.raw}` : ` ${ctx.label}: ${fmt(ctx.raw)}` } },
       },
     };
 
@@ -61,24 +40,11 @@ export default function ClusterDonut({ variant, summary, formatBytes, compact })
       const pct = summary?.diskUsedPercent;
       const colors = diskColors(pct);
       return {
-        data: {
-          labels: ["Used", "Free"],
-          datasets: [
-            {
-              data: [used, free],
-              backgroundColor: colors,
-              borderWidth: 0,
-              hoverOffset: 2,
-            },
-          ],
-        },
+        data: { labels: ["Used", "Free"], datasets: [{ data: [used, free], backgroundColor: colors, borderWidth: 0, hoverOffset: 2 }] },
         options: opts,
-        centerMain: pct != null ? `${pct}%` : "—",
+        centerMain: pct != null ? `${pct}%` : "\u2014",
         centerSub: "used",
-        legendItems: [
-          { color: colors[0], text: `${fmt(used)} used` },
-          { color: GRAY, text: `${fmt(free)} free` },
-        ],
+        legendItems: [{ color: colors[0], text: `${fmt(used)} used` }, { color: GRAY, text: `${fmt(free)} free` }],
       };
     }
 
@@ -89,65 +55,43 @@ export default function ClusterDonut({ variant, summary, formatBytes, compact })
       const pct = summary?.heapUsedPercent;
       const colors = heapColors(pct);
       return {
-        data: {
-          labels: ["Used", "Free"],
-          datasets: [
-            {
-              data: max > 0 ? [used, free] : [0, 1],
-              backgroundColor: max > 0 ? colors : [GRAY, GRAY],
-              borderWidth: 0,
-              hoverOffset: 2,
-            },
-          ],
-        },
+        data: { labels: ["Used", "Free"], datasets: [{ data: max > 0 ? [used, free] : [0, 1], backgroundColor: max > 0 ? colors : [GRAY, GRAY], borderWidth: 0, hoverOffset: 2 }] },
         options: opts,
-        centerMain: pct != null ? `${pct}%` : "—",
+        centerMain: pct != null ? `${pct}%` : "\u2014",
         centerSub: "used",
-        legendItems: [
-          { color: colors[0], text: `${fmt(used)} used` },
-          { color: GRAY, text: `${fmt(free)} free` },
-        ],
+        legendItems: [{ color: colors[0], text: `${fmt(used)} used` }, { color: GRAY, text: `${fmt(free)} free` }],
       };
     }
 
     if (variant === "shards") {
-      const active = summary?.activeShards ?? 0;
+      const primary    = summary?.activePrimaryShards ?? 0;
+      const replica    = (summary?.activeShards ?? 0) - primary;
       const unassigned = summary?.unassignedShards ?? 0;
-      const colors = shardColors(unassigned);
-      const total = active + unassigned;
+      const relocating = summary?.relocatingShards ?? 0;
+      const total      = primary + replica + unassigned + relocating;
+      const hasData    = total > 0;
       return {
         data: {
-          labels: ["Active", "Unassigned"],
-          datasets: [
-            {
-              data: total > 0 ? [active, unassigned] : [0, 1],
-              backgroundColor: total > 0 ? colors : [GRAY, GRAY],
-              borderWidth: 0,
-              hoverOffset: 2,
-            },
-          ],
+          labels: ["Primary", "Replica", "Unassigned", "Relocating"],
+          datasets: [{
+            data: hasData ? [primary, Math.max(0, replica), unassigned, relocating] : [0, 0, 0, 1],
+            backgroundColor: hasData ? ["#3b82f6", "#6366f1", unassigned > 0 ? "#f87171" : GRAY, relocating > 0 ? "#facc15" : GRAY] : [GRAY, GRAY, GRAY, GRAY],
+            borderWidth: 0, hoverOffset: 2,
+          }],
         },
         options: opts,
-        centerMain: `${total} total`,
-        centerSub: "",
+        centerMain: hasData ? String(primary + Math.max(0, replica)) : "\u2014",
+        centerSub: "active",
         legendItems: [
-          { color: "#4ade80", text: `${active} active` },
-          {
-            color: unassigned > 0 ? "#f87171" : GRAY,
-            text: `${unassigned} unassigned`,
-          },
+          { color: "#3b82f6", text: `${primary} primary` },
+          { color: "#6366f1", text: `${Math.max(0, replica)} replica` },
+          { color: unassigned > 0 ? "#f87171" : GRAY, text: `${unassigned} unassigned` },
         ],
       };
     }
 
-    return {
-      data: { labels: [], datasets: [] },
-      options: opts,
-      centerMain: "—",
-      centerSub: "",
-      legendItems: [],
-    };
-  }, [variant, summary, formatBytes]);
+    return { data: { labels: [], datasets: [] }, options: opts, centerMain: "\u2014", centerSub: "", legendItems: [] };
+  }, [variant, summary, fmt]);
 
   return (
     <div className={`cluster-donut${compact ? " cluster-donut--compact" : ""}`}>
@@ -155,18 +99,13 @@ export default function ClusterDonut({ variant, summary, formatBytes, compact })
         <Doughnut data={data} options={options} />
         <div className="cluster-donut-center" aria-hidden>
           <span className="cluster-donut-center-main">{centerMain}</span>
-          {centerSub ? (
-            <span className="cluster-donut-center-sub">{centerSub}</span>
-          ) : null}
+          {centerSub && <span className="cluster-donut-center-sub">{centerSub}</span>}
         </div>
       </div>
       <ul className="cluster-donut-legend">
         {legendItems.map((item, i) => (
           <li key={i}>
-            <span
-              className="cluster-donut-legend-swatch"
-              style={{ background: item.color }}
-            />
+            <span className="cluster-donut-legend-swatch" style={{ background: item.color }} />
             {item.text}
           </li>
         ))}

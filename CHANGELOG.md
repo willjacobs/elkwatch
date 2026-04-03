@@ -8,13 +8,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ## [Unreleased]
 
 ### Added
-- Placeholder for upcoming changes.
+- SQLite-backed alert history (`better-sqlite3`), persisted across backend restarts; optional `GET /api/alerts?limit=`.
 
 ### Changed
-- Placeholder for upcoming changes.
-
-### Fixed
-- Placeholder for upcoming changes.
+- Docker Compose mounts a named volume for `/app/data` (alert database).
 
 ## [0.1.0] - 2026-03-27
 

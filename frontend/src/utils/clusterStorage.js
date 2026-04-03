@@ -13,7 +13,7 @@ export function persistPageCluster(pageKey, name) {
   }
 }
 
-/** Sidebar “active cluster”: mirror all page keys so any route defaults consistently. */
+/** Sidebar "active cluster": mirror all page keys so any route defaults consistently. */
 export function syncAllClusterKeys(name) {
   const keys = ["indices", "ilm", "nodes", "alerts", "templates"];
   try {
