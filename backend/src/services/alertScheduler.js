@@ -5,6 +5,8 @@ const { listRules, getSetting, ruleCount, createRule, setSetting } = require("./
 
 /** Per-index ingest tracking: key -> { docCount, lastIncreaseAt } */
 const ingestState = new Map();
+const healthState = new Map();
+const unassignedState = new Map();
 
 function recordAlert(ruleName, clusterName, message, severity = "warning") {
   const entry = {
@@ -115,6 +117,93 @@ async function checkIngestStall(cluster, rule, config) {
   }
 }
 
+async function checkClusterHealthChange(cluster, rule, config) {
+  const client = getClient(cluster);
+  const health = await client.cluster.health();
+  const current = health.status;
+  const previous = healthState.get(cluster.name);
+
+  healthState.set(cluster.name, current);
+
+  if (!previous) return;
+
+  const severity_order = { green: 0, yellow: 1, red: 2 };
+  const prevLevel = severity_order[previous] ?? 0;
+  const currLevel = severity_order[current] ?? 0;
+
+  if (currLevel > prevLevel) {
+    const msg = `Cluster "${cluster.name}" health degraded: ${previous} → ${current}`;
+    const sev = current === "red" ? "error" : "warning";
+    recordAlert(rule.name || "cluster_health_change", cluster.name, msg, sev);
+    await postSlack(config.alerts?.slack_webhook_url, `[Elkwatch] ${msg}`);
+  }
+}
+
+async function checkHeapPressure(cluster, rule, config) {
+  const client = getClient(cluster);
+  const nodesStats = await client.nodes.stats({ metric: "jvm" });
+  const nodes = nodesStats.nodes || {};
+  const threshold = rule.threshold_percent ?? 85;
+
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    const heapPct = node.jvm?.mem?.heap_used_percent;
+    if (heapPct == null) continue;
+
+    if (heapPct >= threshold) {
+      const nodeName = node.name || nodeId;
+      const msg = `Node "${nodeName}" on "${cluster.name}" heap at ${heapPct}% (threshold ${threshold}%)`;
+      recordAlert(rule.name || "heap_pressure", cluster.name, msg, heapPct >= 95 ? "error" : "warning");
+      await postSlack(config.alerts?.slack_webhook_url, `[Elkwatch] ${msg}`);
+    }
+  }
+}
+
+async function checkUnassignedShards(cluster, rule, config) {
+  const client = getClient(cluster);
+  const health = await client.cluster.health();
+  const count = health.unassigned_shards ?? 0;
+  const thresholdMinutes = rule.threshold_minutes ?? 10;
+  const thresholdMs = thresholdMinutes * 60 * 1000;
+  const now = Date.now();
+  const key = cluster.name;
+
+  if (count === 0) {
+    unassignedState.delete(key);
+    return;
+  }
+
+  let state = unassignedState.get(key);
+  if (!state) {
+    unassignedState.set(key, { count, firstSeenAt: now });
+    return;
+  }
+
+  state.count = count;
+  unassignedState.set(key, state);
+
+  if (now - state.firstSeenAt >= thresholdMs) {
+    const msg = `Cluster "${cluster.name}" has ${count} unassigned shard(s) for ${thresholdMinutes}+ min`;
+    recordAlert(rule.name || "unassigned_shards", cluster.name, msg, "warning");
+    await postSlack(config.alerts?.slack_webhook_url, `[Elkwatch] ${msg}`);
+    state.firstSeenAt = now;
+    unassignedState.set(key, state);
+  }
+}
+
+async function checkShardCount(cluster, rule, config) {
+  const client = getClient(cluster);
+  const health = await client.cluster.health();
+  const total = (health.active_shards ?? 0) + (health.unassigned_shards ?? 0) + (health.relocating_shards ?? 0) + (health.initializing_shards ?? 0);
+  const threshold = rule.threshold_count ?? 1000;
+
+  if (total >= threshold) {
+    const msg = `Cluster "${cluster.name}" has ${total} total shards (threshold ${threshold})`;
+    const sev = total >= threshold * 1.5 ? "error" : "warning";
+    recordAlert(rule.name || "shard_count", cluster.name, msg, sev);
+    await postSlack(config.alerts?.slack_webhook_url, `[Elkwatch] ${msg}`);
+  }
+}
+
 async function runRule(cluster, rule, config) {
   if (rule.enabled === false) return;
 
@@ -129,6 +218,18 @@ async function runRule(cluster, rule, config) {
         break;
       case "ingest_stall":
         await checkIngestStall(cluster, rule, config);
+        break;
+      case "cluster_health_change":
+        await checkClusterHealthChange(cluster, rule, config);
+        break;
+      case "heap_pressure":
+        await checkHeapPressure(cluster, rule, config);
+        break;
+      case "unassigned_shards":
+        await checkUnassignedShards(cluster, rule, config);
+        break;
+      case "shard_count":
+        await checkShardCount(cluster, rule, config);
         break;
       default:
         console.warn(`Unknown alert rule type: ${type}`);
@@ -219,6 +320,10 @@ function seedFromConfig(config) {
 function buildConfig(rule) {
   if (rule.type === "disk_usage") return { threshold_percent: rule.threshold_percent ?? 80 };
   if (rule.type === "ingest_stall") return { index_pattern: rule.index_pattern || "*", threshold_minutes: rule.threshold_minutes ?? 60 };
+  if (rule.type === "cluster_health_change") return {};
+  if (rule.type === "heap_pressure") return { threshold_percent: rule.threshold_percent ?? 85 };
+  if (rule.type === "unassigned_shards") return { threshold_minutes: rule.threshold_minutes ?? 10 };
+  if (rule.type === "shard_count") return { threshold_count: rule.threshold_count ?? 1000 };
   return {};
 }
 
